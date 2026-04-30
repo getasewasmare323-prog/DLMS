@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">SMART ACCESS logo</title>
+  <desc id="logoDesc">A modern green shield and open-book logo with an S path for SMART ACCESS.</desc>
+  <defs>
+    <linearGradient id="saBg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f3d2e"/>
+      <stop offset="0.55" stop-color="#166534"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="saAccent" x1="132" y1="128" x2="370" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fef3c7"/>
+      <stop offset="1" stop-color="#fde68a"/>
+    </linearGradient>
+    <filter id="saShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#052e16" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <rect x="40" y="40" width="432" height="432" rx="116" fill="url(#saBg)"/>
+  <g filter="url(#saShadow)">
+    <path d="M118 136c0-22.091 17.909-40 40-40h196c22.091 0 40 17.909 40 40v194c0 22.091-17.909 40-40 40H228l-68 46v-86h-2c-22.091 0-40-17.909-40-40V136Z" fill="#f8fafc" fill-opacity="0.98"/>
+    <path d="M165 172c0-13.255 10.745-24 24-24h135c13.255 0 24 10.745 24 24v128c0 13.255-10.745 24-24 24H209l-44 29v-53c0-4.418 3.582-8 8-8h16c-13.255 0-24-10.745-24-24V172Z" fill="#ecfdf5"/>
+    <path d="M255 148v176" stroke="#bbf7d0" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <path d="M167 194c24-26 64-37 99-37 34 0 67 9 92 24l-26 30c-20-10-42-15-65-15-24 0-44 4-56 15-8 7-7 16 5 20 13 5 35 7 57 10 42 6 94 18 94 69 0 24-12 44-32 58-24 16-56 23-92 23-42 0-85-13-114-35l26-31c25 18 57 28 90 28 23 0 43-4 56-13 10-7 14-16 12-25-4-15-26-19-62-24-44-6-102-14-102-70 0-18 7-34 18-47Z" fill="url(#saAccent)"/>
+  <path d="M188 193c21-22 54-32 87-32 32 0 62 8 85 22" fill="none" stroke="#14532d" stroke-opacity="0.28" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="389" cy="120" r="18" fill="#fef08a" fill-opacity="0.9"/>
+</svg>

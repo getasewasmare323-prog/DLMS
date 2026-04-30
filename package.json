@@ -1,0 +1,8 @@
+{
+  "name": "project-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "scripts\\dev.cmd"
+  }
+}
