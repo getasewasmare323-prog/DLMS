@@ -16,15 +16,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   addBookmark,
-  borrowDigitalResource,
   borrowPhysicalResource,
   removeBookmark,
+  createReservation,
 } from "../data/resourceEndpoint";
 
 const subjectToneMap = {
   Biology: "bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300",
-  Chemistry:
-    "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+  Chemistry: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
   Physics:
     "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
   Mathematics:
@@ -48,7 +47,7 @@ export default function ResourceCard({
   const publishedDate = resource?.createdAt
     ? new Date(resource.createdAt).toLocaleDateString()
     : "Recent";
-  const canBorrowDigital =
+  const canOpenReader =
     resource.formatType !== "physical" && resource.resourceType === "reading";
   const canBorrowPhysical =
     resource.formatType !== "digital" && (resource.availableCopies || 0) > 0;
@@ -72,13 +71,13 @@ export default function ResourceCard({
     onSuccess: invalidateLibraryQueries,
   });
 
-  const digitalBorrowMutation = useMutation({
-    mutationFn: () => borrowDigitalResource(resource.resourceId),
+  const physicalBorrowMutation = useMutation({
+    mutationFn: () => borrowPhysicalResource(resource.resourceId),
     onSuccess: invalidateLibraryQueries,
   });
 
-  const physicalBorrowMutation = useMutation({
-    mutationFn: () => borrowPhysicalResource(resource.resourceId),
+  const reserveMutation = useMutation({
+    mutationFn: () => createReservation(resource.resourceId),
     onSuccess: invalidateLibraryQueries,
   });
 
@@ -97,6 +96,7 @@ export default function ResourceCard({
       state: {
         title: resource.title,
         url: buildAssetUrl(resource.filePath),
+        resourceId: resource.resourceId,
       },
     });
   };
@@ -131,7 +131,9 @@ export default function ResourceCard({
                 Pending
               </span>
             ) : null}
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeClass}`}>
+            <span
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${badgeClass}`}
+            >
               {resource.subject || "General"}
             </span>
           </div>
@@ -143,7 +145,9 @@ export default function ResourceCard({
 
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           {resource.author || "Library record"}
-          {resource.gradeLevel ? ` | Grade ${resource.gradeLevel}` : " | Open shelf"}
+          {resource.gradeLevel
+            ? ` | Grade ${resource.gradeLevel}`
+            : " | Open shelf"}
         </p>
 
         <p className="mt-2 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">
@@ -180,7 +184,7 @@ export default function ResourceCard({
 
         <div className="mt-5 space-y-2">
           <div className="flex gap-2">
-            {canBorrowDigital ? (
+            {canOpenReader ? (
               <button
                 onClick={openReader}
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
@@ -205,7 +209,11 @@ export default function ResourceCard({
               className="rounded-xl border border-zinc-200 bg-white px-3 text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
               aria-label="Save Resource"
             >
-              {bookmarked ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
+              {bookmarked ? (
+                <BookmarkCheck size={17} />
+              ) : (
+                <Bookmark size={17} />
+              )}
             </button>
           </div>
 
@@ -216,29 +224,37 @@ export default function ResourceCard({
             >
               View Details
             </button>
-            <button
-              onClick={() => digitalBorrowMutation.mutate()}
-              disabled={!canBorrowDigital || digitalBorrowMutation.isPending}
-              className="rounded-xl border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-950/20"
-            >
-              Digital Borrow
-            </button>
-            <button
-              onClick={() => physicalBorrowMutation.mutate()}
-              disabled={!canBorrowPhysical || physicalBorrowMutation.isPending}
-              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Library size={14} />
-                Physical Borrow
-              </span>
-            </button>
+            {canBorrowPhysical ? (
+              <button
+                onClick={() => physicalBorrowMutation.mutate()}
+                disabled={physicalBorrowMutation.isPending}
+                className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Library size={14} />
+                  Physical Borrow
+                </span>
+              </button>
+            ) : resource.formatType !== "digital" ? (
+              <button
+                onClick={() => reserveMutation.mutate()}
+                disabled={reserveMutation.isPending}
+                className="rounded-xl border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-950/20"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Clock size={14} />
+                  Reserve
+                </span>
+              </button>
+            ) : null}
           </div>
         </div>
 
         {resource.filePath && user ? (
           <button
-            onClick={() => window.open(buildAssetUrl(resource.filePath), "_blank")}
+            onClick={() =>
+              window.open(buildAssetUrl(resource.filePath), "_blank")
+            }
             className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-zinc-500 transition-colors hover:text-emerald-600 dark:text-zinc-400"
           >
             <Download size={14} />

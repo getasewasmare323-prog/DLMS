@@ -8,6 +8,8 @@ const router = express.Router();
 router.post("/signup", autController.signUp);
 router.post("/login", autController.login);
 router.post("/logout", autController.jwtauth, autController.logout);
+router.post("/forgot-password", userController.forgotPassword);
+router.post("/reset-password", userController.resetPassword);
 // protected
 router.get("/me", autController.jwtauth, userController.getCurrentUser);
 router.patch("/me", autController.jwtauth, userController.updateCurrentUser);

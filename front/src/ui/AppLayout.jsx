@@ -58,7 +58,7 @@ export default function AppLayout() {
     };
 
     loadNotifications();
-    const intervalId = window.setInterval(loadNotifications, 30000);
+    const intervalId = window.setInterval(loadNotifications, 30000000);
 
     return () => {
       isMounted = false;

@@ -18,7 +18,7 @@ export default function SearchResources() {
   const [gradeLevel, setGradeLevel] = useState("");
   const [formatType, setFormatType] = useState("");
   const [availability, setAvailability] = useState("");
-  const [resourceType, setResourceType] = useState("reading");
+  const [resourceType, setResourceType] = useState("");
   const [status, setStatus] = useState("");
 
   const filters = useMemo(
@@ -31,7 +31,15 @@ export default function SearchResources() {
       resourceType,
       status,
     }),
-    [availability, formatType, gradeLevel, resourceType, search, status, subject],
+    [
+      availability,
+      formatType,
+      gradeLevel,
+      resourceType,
+      search,
+      status,
+      subject,
+    ],
   );
 
   const { resources, error, isLoading } = useResourceSearch(filters);
@@ -84,7 +92,8 @@ export default function SearchResources() {
               Catalog Search
             </h1>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Search digital and physical resources, check availability, and borrow from one school catalog.
+              Search digital and physical resources, check availability, and
+              borrow from one school catalog.
             </p>
           </div>
 
@@ -164,6 +173,7 @@ export default function SearchResources() {
             value={resourceType}
             onChange={(e) => setResourceType(e.target.value)}
           >
+            <option value="">All resources</option>
             <option value="reading">Reading</option>
             <option value="video">Video</option>
           </select>
@@ -194,7 +204,8 @@ export default function SearchResources() {
               {resources.length} matching resources
             </p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Borrow digital access instantly or reserve physical copies where stock is available.
+              Reserve physical copies or access available digital resources
+              directly.
             </p>
           </div>
         </div>

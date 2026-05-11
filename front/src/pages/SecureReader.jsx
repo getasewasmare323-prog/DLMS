@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import { useMutation } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,19 +9,33 @@ import {
   Minus,
   Plus,
   ShieldCheck,
+  Bookmark,
+  BookmarkCheck,
+  Clock,
+  Save,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { updateReadingProgress } from "../data/resourceEndpoint";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function SecureReader() {
   const location = useLocation();
-  const { title, url: fileUrl } = location.state || {};
+  const { title, url: fileUrl, resourceId } = location.state || {};
   const readerRef = useRef(null);
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [pageWidth, setPageWidth] = useState(760);
+  const [readingStartTime, setReadingStartTime] = useState(Date.now());
+  const [timeSpent, setTimeSpent] = useState(0);
+  const [bookmarks, setBookmarks] = useState([]);
+  const [notes, setNotes] = useState("");
+  const [lastSavedProgress, setLastSavedProgress] = useState(0);
+
+  const onDocumentLoadSuccess = ({ numPages: nextNumPages }) => {
+    setNumPages(nextNumPages);
+  };
 
   useEffect(() => {
     const preventActions = (e) => {
@@ -39,20 +54,93 @@ export default function SecureReader() {
     };
   }, []);
 
+  const saveProgressMutation = useMutation({
+    mutationFn: (progressData) =>
+      updateReadingProgress(resourceId, progressData),
+    onSuccess: () => {
+      setLastSavedProgress(pageNumber);
+    },
+  });
+
+  // Track reading time
   useEffect(() => {
-    const updateWidth = () => {
-      if (!readerRef.current) return;
-      const nextWidth = Math.min(readerRef.current.clientWidth - 48, 920);
-      setPageWidth(Math.max(280, nextWidth));
+    const interval = setInterval(() => {
+      setTimeSpent(Math.floor((Date.now() - readingStartTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [readingStartTime]);
+
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    if (!resourceId || !numPages) return;
+
+    const autoSave = () => {
+      const progressPercent = Math.round((pageNumber / numPages) * 100);
+      saveProgressMutation.mutate({
+        progressPercent,
+        lastPage: pageNumber,
+        totalPages: numPages,
+        timeSpent,
+        bookmarks,
+        notes,
+      });
     };
 
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
+    // Set up auto-save every 30 seconds
+    const interval = setInterval(autoSave, 30000);
 
-  const onDocumentLoadSuccess = ({ numPages: totalPages }) => {
-    setNumPages(totalPages);
+    return () => clearInterval(interval);
+  }, [resourceId, numPages, saveProgressMutation]);
+
+  // Save progress when page changes significantly
+  useEffect(() => {
+    if (
+      !resourceId ||
+      !numPages ||
+      Math.abs(pageNumber - lastSavedProgress) < 5
+    )
+      return;
+
+    const progressPercent = Math.round((pageNumber / numPages) * 100);
+    saveProgressMutation.mutate({
+      progressPercent,
+      lastPage: pageNumber,
+      totalPages: numPages,
+      timeSpent,
+      bookmarks,
+      notes,
+    });
+  }, [
+    pageNumber,
+    lastSavedProgress,
+    numPages,
+    timeSpent,
+    bookmarks,
+    notes,
+    resourceId,
+    saveProgressMutation,
+  ]);
+
+  const toggleBookmark = () => {
+    setBookmarks((prev) => {
+      const exists = prev.includes(pageNumber);
+      if (exists) {
+        return prev.filter((p) => p !== pageNumber);
+      } else {
+        return [...prev, pageNumber].sort((a, b) => a - b);
+      }
+    });
+  };
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
   const displayTitle = title || "School Reading Material";
@@ -95,7 +183,9 @@ export default function SecureReader() {
               </p>
               <div className="mt-4 flex items-center justify-between">
                 <button
-                  onClick={() => setZoom((current) => Math.max(0.75, current - 0.1))}
+                  onClick={() =>
+                    setZoom((current) => Math.max(0.75, current - 0.1))
+                  }
                   className="grid h-11 w-11 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   <Minus size={18} />
@@ -109,7 +199,9 @@ export default function SecureReader() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setZoom((current) => Math.min(1.8, current + 0.1))}
+                  onClick={() =>
+                    setZoom((current) => Math.min(1.8, current + 0.1))
+                  }
                   className="grid h-11 w-11 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                 >
                   <Plus size={18} />
@@ -122,20 +214,102 @@ export default function SecureReader() {
                 </p>
                 <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                   {pageNumber}
-                  <span className="text-base text-zinc-400"> / {numPages || "--"}</span>
+                  <span className="text-base text-zinc-400">
+                    {" "}
+                    / {numPages || "--"}
+                  </span>
                 </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <Clock size={14} className="text-emerald-500" />
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {formatTime(timeSpent)}
+                  </span>
+                </div>
+                {saveProgressMutation.isPending && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500">
+                    <Loader2 size={12} className="animate-spin" />
+                    Saving progress...
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={toggleBookmark}
+                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
+                    bookmarks.includes(pageNumber)
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {bookmarks.includes(pageNumber) ? (
+                      <BookmarkCheck size={14} />
+                    ) : (
+                      <Bookmark size={14} />
+                    )}
+                    {bookmarks.includes(pageNumber) ? "Bookmarked" : "Bookmark"}
+                  </span>
+                </button>
+                <button
+                  onClick={() =>
+                    saveProgressMutation.mutate({
+                      progressPercent: Math.round(
+                        (pageNumber / numPages) * 100,
+                      ),
+                      lastPage: pageNumber,
+                      totalPages: numPages,
+                      timeSpent,
+                      bookmarks,
+                      notes,
+                    })
+                  }
+                  disabled={saveProgressMutation.isPending}
+                  className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Save size={14} />
+                    Save
+                  </span>
+                </button>
               </div>
             </div>
 
             <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
-                Reader Notes
+                Reading Notes
               </p>
-              <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                Right click, print, and direct save shortcuts are disabled to
-                keep this school copy inside the portal.
-              </p>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add your reading notes here..."
+                className="mt-3 w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 outline-none focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                rows={4}
+              />
             </div>
+
+            {bookmarks.length > 0 && (
+              <div className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                  Bookmarks ({bookmarks.length})
+                </p>
+                <div className="mt-3 space-y-2">
+                  {bookmarks.map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setPageNumber(page)}
+                      className={`w-full rounded-xl px-3 py-2 text-left text-sm transition-colors ${
+                        page === pageNumber
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                          : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300"
+                      }`}
+                    >
+                      Page {page}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -153,7 +327,9 @@ export default function SecureReader() {
             <div className="flex items-center gap-2">
               <button
                 disabled={pageNumber <= 1}
-                onClick={() => setPageNumber((current) => Math.max(1, current - 1))}
+                onClick={() =>
+                  setPageNumber((current) => Math.max(1, current - 1))
+                }
                 className="grid h-11 w-11 place-items-center rounded-2xl border border-zinc-200 bg-white text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
               >
                 <ChevronLeft size={18} />
@@ -161,7 +337,9 @@ export default function SecureReader() {
               <button
                 disabled={pageNumber >= numPages}
                 onClick={() =>
-                  setPageNumber((current) => Math.min(numPages || current, current + 1))
+                  setPageNumber((current) =>
+                    Math.min(numPages || current, current + 1),
+                  )
                 }
                 className="grid h-11 w-11 place-items-center rounded-2xl border border-zinc-200 bg-white text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
               >
@@ -170,7 +348,10 @@ export default function SecureReader() {
             </div>
           </div>
 
-          <div ref={readerRef} className="relative flex-1 overflow-auto p-4 md:p-6 xl:p-10">
+          <div
+            ref={readerRef}
+            className="relative flex-1 overflow-auto p-4 md:p-6 xl:p-10"
+          >
             <div className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
               <div className="flex h-full w-full flex-wrap content-start gap-x-20 gap-y-24 p-12 -rotate-12">
                 {Array.from({ length: 50 }).map((_, index) => (
@@ -190,7 +371,10 @@ export default function SecureReader() {
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={
                   <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
-                    <Loader2 className="animate-spin text-emerald-600" size={34} />
+                    <Loader2
+                      className="animate-spin text-emerald-600"
+                      size={34}
+                    />
                     <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
                       Opening protected reader...
                     </p>

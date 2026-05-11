@@ -156,13 +156,6 @@ export default function Dashboard() {
           icon: AlertCircle,
           tone: "rose",
         },
-        {
-          label: "Saved Records",
-          value: bookmarks.length,
-          trend: "Quick review",
-          icon: Bookmark,
-          tone: "indigo",
-        },
       ],
       primaryTitle: "Circulation and approvals in one desk",
       primaryDesc:
@@ -405,6 +398,39 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {role === "teacher" && (
+        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h3 className="mb-5 flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            <BookOpen size={18} className="text-emerald-600" />
+            Teaching Tools
+          </h3>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <QuickActionCard
+              title="Upload Video Lesson"
+              description="Share recorded lessons with your students"
+              action={() => navigate("/teacher/upload-videos")}
+              icon={Library}
+              color="emerald"
+            />
+            <QuickActionCard
+              title="Manage Videos"
+              description="Edit, preview, and organize your video collection"
+              action={() => navigate("/teacher/videos/manage")}
+              icon={BookOpen}
+              color="sky"
+            />
+            <QuickActionCard
+              title="Create Exercise"
+              description="Build interactive quizzes for your class"
+              action={() => navigate("/exercise")}
+              icon={TrendingUp}
+              color="violet"
+            />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -482,3 +508,36 @@ const EmptyPanel = ({ text }) => (
     {text}
   </div>
 );
+
+const QuickActionCard = ({ title, description, action, icon: Icon, color }) => {
+  const colorMap = {
+    emerald:
+      "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-300 dark:border-emerald-900/40 dark:hover:bg-emerald-950/30",
+    sky: "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-950/20 dark:text-sky-300 dark:border-sky-900/40 dark:hover:bg-sky-950/30",
+    violet:
+      "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-950/20 dark:text-violet-300 dark:border-violet-900/40 dark:hover:bg-violet-950/30",
+  };
+
+  const classes = colorMap[color] || colorMap.emerald;
+
+  return (
+    <button
+      onClick={action}
+      className={`group rounded-2xl border p-5 text-left transition-all hover:-translate-y-1 hover:shadow-lg ${classes}`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/60 dark:bg-zinc-800/60">
+          <Icon size={18} />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-bold text-zinc-900 dark:text-zinc-100">
+            {title}
+          </h4>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {description}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+};

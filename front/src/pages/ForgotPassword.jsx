@@ -1,41 +1,34 @@
 import React, { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { AlertCircle, LogIn } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertCircle, Mail, ArrowLeft } from "lucide-react";
+import { forgotPassword } from "../data/userEndPoint";
 
-export default function LoginForm() {
-  const { user, login } = useAuth();
-  const navigate = useNavigate();
+export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  React.useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
-
-  React.useEffect(() => {
-    setEmail("");
-    setPassword("");
-  }, []);
-
-  if (user) return <Navigate to="/dashboard" replace />;
+  const [success, setSuccess] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const status = await login(email, password);
+    setError("");
+    setSuccess("");
+    setIsLoading(true);
 
-    if (status !== "ok") {
-      setError("Invalid email or password");
-      return;
+    try {
+      const data = await forgotPassword(email);
+
+      if (data.status === "ok") {
+        setSuccess("Password reset instructions have been sent to your email.");
+        setEmail("");
+      } else {
+        setError(data.error || "Failed to send reset email. Please try again.");
+      }
+    } catch (err) {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setEmail("");
-    setPassword("");
-
-    navigate("/dashboard");
   };
 
   return (
@@ -46,11 +39,12 @@ export default function LoginForm() {
             SMART ACCESS
           </p>
           <h1 className="mt-6 font-serif text-5xl font-bold leading-tight">
-            Continue with your studies, one lesson at a time.
+            Reset Your Password
           </h1>
           <p className="mt-5 max-w-xl text-base text-amber-50/85">
-            Access grade-based notifications, textbooks, worksheets, and video
-            lessons prepared for Ethiopian secondary school learners.
+            Enter your email address and we'll send you instructions to reset
+            your password. Make sure to check your spam folder if you don't see
+            the email.
           </p>
         </section>
 
@@ -61,9 +55,9 @@ export default function LoginForm() {
               alt="SMART ACCESS logo"
               className="h-16 w-16 rounded-3xl object-cover"
             />
-            <h1 className="mt-5 text-3xl font-bold">Welcome Back</h1>
+            <h1 className="mt-5 text-3xl font-bold">Forgot Password</h1>
             <p className="mt-2 text-sm text-emerald-50/85">
-              Sign in to reach your dashboard and school resources.
+              Enter your email to receive reset instructions
             </p>
           </div>
 
@@ -72,6 +66,13 @@ export default function LoginForm() {
               <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/20 dark:text-red-400">
                 <AlertCircle size={18} className="shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="flex items-start gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-600 dark:bg-green-950/20 dark:text-green-400">
+                <Mail size={18} className="shrink-0" />
+                <span>{success}</span>
               </div>
             )}
 
@@ -89,43 +90,24 @@ export default function LoginForm() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                className="w-full rounded-xl border border-zinc-200 px-4 py-3 outline-none transition-all focus:ring-2 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1d4d2f] py-3 font-bold text-white transition-all hover:bg-[#163b24]"
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1d4d2f] py-3 font-bold text-white transition-all hover:bg-[#163b24] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <LogIn size={19} />
-              Sign In
+              <Mail size={19} />
+              {isLoading ? "Sending..." : "Send Reset Instructions"}
             </button>
 
-            <p className="text-center text-sm text-zinc-500">
-              Don't have an account?{" "}
-              <Link to="/signup" className="font-semibold text-emerald-700">
-                Sign up
-              </Link>
-            </p>
-
-            <p className="text-center text-sm text-zinc-500">
+            <div className="text-center">
               <Link
-                to="/forgot-password"
-                className="font-semibold text-emerald-700 hover:text-emerald-800"
+                to="/login"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
               >
-                Forgot your password?
+                <ArrowLeft size={16} />
+                Back to Login
               </Link>
-            </p>
+            </div>
           </form>
         </div>
       </div>

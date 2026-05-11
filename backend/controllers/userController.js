@@ -1,6 +1,9 @@
 const { User } = require("../models");
 const bcrypt = require("bcrypt");
+const { Op } = require("sequelize");
 const saltRounds = 10;
+const crypto = require("crypto");
+const sendMail = require("../middleware/emailService");
 
 const serializeUser = (user) => {
   if (!user) return null;
@@ -17,7 +20,14 @@ const serializeUser = (user) => {
 exports.getAllUser = async (req, res) => {
   try {
     const result = await User.findAll({
-      attributes: ["userId", "firstName", "lastName", "email", "role", "classLevel"],
+      attributes: [
+        "userId",
+        "firstName",
+        "lastName",
+        "email",
+        "role",
+        "classLevel",
+      ],
     });
     if (!result.length) {
       return res.status(404).json({ error: "No users found" });
@@ -36,7 +46,14 @@ exports.getUserById = async (req, res) => {
   try {
     const user = await User.findOne({
       where: { userId: req.params.id },
-      attributes: ["userId", "firstName", "lastName", "email", "role", "classLevel"],
+      attributes: [
+        "userId",
+        "firstName",
+        "lastName",
+        "email",
+        "role",
+        "classLevel",
+      ],
     });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -139,7 +156,9 @@ exports.updateCurrentUser = async (req, res) => {
   } catch (err) {
     console.error("Current user update error:", err.message);
     if (err.name === "SequelizeUniqueConstraintError") {
-      return res.status(409).json({ status: "fail", error: "Email already in use" });
+      return res
+        .status(409)
+        .json({ status: "fail", error: "Email already in use" });
     }
     res.status(500).json({ status: "error", error: "Internal server error" });
   }
@@ -171,7 +190,10 @@ exports.updateCurrentPassword = async (req, res) => {
       return res.status(404).json({ status: "fail", error: "User not found" });
     }
 
-    const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
     if (!passwordMatches) {
       return res.status(400).json({
         status: "fail",
@@ -238,6 +260,115 @@ exports.deleteUser = async (req, res) => {
     }
   } catch (err) {
     console.error("Controller error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  try {
+    const user = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({
+        status: "ok",
+        message:
+          "If an account with that email exists, a password reset link has been sent.",
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save token to user
+    await user.update({
+      resetToken,
+      resetTokenExpires,
+    });
+
+    // Send email
+    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1d4d2f;">Password Reset Request</h2>
+        <p>Hello ${user.firstName},</p>
+        <p>You requested a password reset for your SMART ACCESS account.</p>
+        <p>Please click the link below to reset your password:</p>
+        <p style="margin: 20px 0;">
+          <a href="${resetUrl}" style="background-color: #1d4d2f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+        </p>
+        <p>This link will expire in 10 minutes for security reasons.</p>
+        <p>If you didn't request this password reset, please ignore this email.</p>
+        <p>Best regards,<br>SMART ACCESS Team</p>
+      </div>
+    `;
+
+    await sendMail({
+      email: user.email,
+      subject: "Password Reset - SMART ACCESS",
+      html,
+    });
+
+    res.status(200).json({
+      status: "ok",
+      message:
+        "If an account with that email exists, a password reset link has been sent.",
+    });
+  } catch (err) {
+    console.error("Forgot password error:", err.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ error: "Token and password are required" });
+  }
+
+  if (password.length < 6) {
+    return res
+      .status(400)
+      .json({ error: "Password must be at least 6 characters long" });
+  }
+
+  try {
+    const user = await User.findOne({
+      where: {
+        resetToken: token,
+        resetTokenExpires: {
+          [Op.gt]: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Update user password and clear reset token
+    await user.update({
+      password: hashedPassword,
+      resetToken: null,
+      resetTokenExpires: null,
+    });
+
+    res.status(200).json({
+      status: "ok",
+      message: "Password reset successfully",
+    });
+  } catch (err) {
+    console.error("Reset password error:", err.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

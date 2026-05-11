@@ -107,7 +107,9 @@ export async function searchResources(params = {}) {
   });
 
   const response = await fetch(
-    buildApiUrl(`/resources/search${query.toString() ? `?${query.toString()}` : ""}`),
+    buildApiUrl(
+      `/resources/search${query.toString() ? `?${query.toString()}` : ""}`,
+    ),
     {
       method: "GET",
       credentials: "include",
@@ -158,14 +160,6 @@ export async function deleteManagedResource(resourceId) {
   return readJsonResponse(response, "Failed to delete resource");
 }
 
-export async function borrowDigitalResource(resourceId) {
-  const response = await fetch(buildApiUrl(`/borrows/digital/${resourceId}`), {
-    method: "POST",
-    credentials: "include",
-  });
-  return readJsonResponse(response, "Failed to borrow digital resource");
-}
-
 export async function borrowPhysicalResource(resourceId) {
   const response = await fetch(buildApiUrl(`/borrows/physical/${resourceId}`), {
     method: "POST",
@@ -175,10 +169,13 @@ export async function borrowPhysicalResource(resourceId) {
 }
 
 export async function returnBorrow(transactionId) {
-  const response = await fetch(buildApiUrl(`/borrows/${transactionId}/return`), {
-    method: "PATCH",
-    credentials: "include",
-  });
+  const response = await fetch(
+    buildApiUrl(`/borrows/${transactionId}/return`),
+    {
+      method: "PATCH",
+      credentials: "include",
+    },
+  );
   return readJsonResponse(response, "Failed to return resource");
 }
 
@@ -196,7 +193,10 @@ export async function getOverdueBorrows() {
     method: "GET",
     credentials: "include",
   });
-  const result = await readJsonResponse(response, "Failed to fetch overdue borrows");
+  const result = await readJsonResponse(
+    response,
+    "Failed to fetch overdue borrows",
+  );
   return result.data.transactions;
 }
 
@@ -222,30 +222,39 @@ export async function getBookmarks() {
 }
 
 export async function addBookmark(resourceId) {
-  const response = await fetch(buildApiUrl(`/learning/bookmarks/${resourceId}`), {
-    method: "POST",
-    credentials: "include",
-  });
+  const response = await fetch(
+    buildApiUrl(`/learning/bookmarks/${resourceId}`),
+    {
+      method: "POST",
+      credentials: "include",
+    },
+  );
   return readJsonResponse(response, "Failed to bookmark resource");
 }
 
 export async function removeBookmark(resourceId) {
-  const response = await fetch(buildApiUrl(`/learning/bookmarks/${resourceId}`), {
-    method: "DELETE",
-    credentials: "include",
-  });
+  const response = await fetch(
+    buildApiUrl(`/learning/bookmarks/${resourceId}`),
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
   return readJsonResponse(response, "Failed to remove bookmark");
 }
 
 export async function updateReadingProgress(resourceId, payload) {
-  const response = await fetch(buildApiUrl(`/learning/progress/${resourceId}`), {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    buildApiUrl(`/learning/progress/${resourceId}`),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      credentials: "include",
     },
-    body: JSON.stringify(payload),
-    credentials: "include",
-  });
+  );
   return readJsonResponse(response, "Failed to update reading progress");
 }
 
@@ -254,7 +263,10 @@ export async function getReadingLists() {
     method: "GET",
     credentials: "include",
   });
-  const result = await readJsonResponse(response, "Failed to fetch reading lists");
+  const result = await readJsonResponse(
+    response,
+    "Failed to fetch reading lists",
+  );
   return result.data.readingLists;
 }
 
@@ -283,4 +295,37 @@ export async function addReadingListItem(readingListId, payload) {
     },
   );
   return readJsonResponse(response, "Failed to add reading list item");
+}
+
+// ===== RESERVATION FUNCTIONS =====
+
+export async function createReservation(resourceId) {
+  const response = await fetch(buildApiUrl(`/borrows/reserve/${resourceId}`), {
+    method: "POST",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to create reservation");
+}
+
+export async function getMyReservations() {
+  const response = await fetch(buildApiUrl("/borrows/reservations"), {
+    method: "GET",
+    credentials: "include",
+  });
+  const result = await readJsonResponse(
+    response,
+    "Failed to fetch reservations",
+  );
+  return result.data.reservations;
+}
+
+export async function cancelReservation(reservationId) {
+  const response = await fetch(
+    buildApiUrl(`/borrows/reservations/${reservationId}`),
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
+  return readJsonResponse(response, "Failed to cancel reservation");
 }

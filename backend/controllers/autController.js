@@ -137,16 +137,18 @@ exports.jwtauth = async (req, res, next) => {
     });
   }
 };
-const requireRoles = (...roles) => (req, res, next) => {
-  const role = req.user && req.user.role;
-  if (!roles.includes(role)) {
-    return res.status(403).json({
-      status: "fail",
-      message: "You are not authorized to access this resource",
-    });
-  }
-  next();
-};
+const requireRoles =
+  (...roles) =>
+  (req, res, next) => {
+    const role = req.user && req.user.role;
+    if (!roles.includes(role)) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You are not authorized to access this resource",
+      });
+    }
+    next();
+  };
 
 exports.requireRoles = requireRoles;
 exports.admin = requireRoles("admin");
@@ -154,6 +156,7 @@ exports.teacher = requireRoles("teacher");
 exports.librarian = requireRoles("librarian");
 exports.student = requireRoles("student");
 exports.librarianOrAdmin = requireRoles("librarian", "admin");
+exports.teacherOrStudent = requireRoles("teacher", "student");
 exports.teacherOrLibrarian = requireRoles("teacher", "librarian");
 exports.libraryMember = requireRoles(
   "student",

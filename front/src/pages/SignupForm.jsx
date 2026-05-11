@@ -24,6 +24,15 @@ export default function SignupForm() {
     }
   }, [user, navigate]);
 
+  React.useEffect(() => {
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setClassLevel("9");
+    setPassword("");
+    setConfirmPassword("");
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -44,7 +53,14 @@ export default function SignupForm() {
       return;
     }
 
-    navigate("/login");
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setClassLevel("9");
+    setPassword("");
+    setConfirmPassword("");
+
+    navigate("/dashboard");
   };
 
   return (

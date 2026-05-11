@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "userId",
         as: "user",
       });
+      Notification.belongsTo(models.Resource, {
+        foreignKey: "resourceId",
+        as: "resource",
+        onDelete: "CASCADE",
+      });
     }
   }
   Notification.init(

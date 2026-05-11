@@ -16,22 +16,44 @@ module.exports = (sequelize, DataTypes) => {
       this.hasMany(models.PhysicalCopy, {
         foreignKey: "resourceId",
         as: "physicalCopies",
+        onDelete: "CASCADE",
+        hooks: true,
       });
       this.hasMany(models.BorrowTransaction, {
         foreignKey: "resourceId",
         as: "borrowTransactions",
+        onDelete: "CASCADE",
+        hooks: true,
       });
       this.hasMany(models.Bookmark, {
         foreignKey: "resourceId",
         as: "bookmarks",
+        onDelete: "CASCADE",
+        hooks: true,
       });
       this.hasMany(models.ReadingListItem, {
         foreignKey: "resourceId",
         as: "readingListItems",
+        onDelete: "CASCADE",
+        hooks: true,
       });
       this.hasMany(models.ReadingProgress, {
         foreignKey: "resourceId",
         as: "readingProgressEntries",
+        onDelete: "CASCADE",
+        hooks: true,
+      });
+      this.hasMany(models.Rating, {
+        foreignKey: "resourceId",
+        as: "ratings",
+        onDelete: "CASCADE",
+        hooks: true,
+      });
+      this.hasMany(models.Notification, {
+        foreignKey: "resourceId",
+        as: "notifications",
+        onDelete: "CASCADE",
+        hooks: true,
       });
     }
   }

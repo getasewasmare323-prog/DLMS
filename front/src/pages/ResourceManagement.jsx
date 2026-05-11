@@ -8,11 +8,14 @@ import {
   Loader2,
   Save,
   Trash2,
+  Upload,
 } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 import {
   deleteManagedResource,
   registerPhysicalResource,
   updateManagedResource,
+  uploadBook,
 } from "../data/resourceEndpoint";
 import { useAuth } from "../context/AuthContext";
 import { useManagedResources, useOverdueBorrows } from "../hooks/useResources";
@@ -32,6 +35,23 @@ export default function ResourceManagement() {
     shelfLocation: "",
     description: "",
   });
+  const [uploadForm, setUploadForm] = useState({
+    title: "",
+    author: "",
+    subject: "English",
+    gradeLevel: "9",
+    keywords: "",
+    accessLevel: "class-only",
+    description: "",
+    formatType: "digital",
+    totalCopies: "0",
+    shelfLocation: "",
+    publisher: "",
+    edition: "",
+    isbn: "",
+    language: "English",
+    file: null,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteManagedResource,
@@ -42,12 +62,15 @@ export default function ResourceManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ resourceId, payload }) => updateManagedResource(resourceId, payload),
+    mutationFn: ({ resourceId, payload }) =>
+      updateManagedResource(resourceId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["managed-resources"] });
       queryClient.invalidateQueries({ queryKey: ["resource-search"] });
     },
   });
+
+  const [activeDeleteId, setActiveDeleteId] = useState(null);
 
   const registerMutation = useMutation({
     mutationFn: registerPhysicalResource,
@@ -63,14 +86,71 @@ export default function ResourceManagement() {
         shelfLocation: "",
         description: "",
       });
+      toast.success("Physical resource registered successfully.");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Unable to register physical resource.");
     },
   });
+
+  const uploadMutation = useMutation({
+    mutationFn: uploadBook,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["managed-resources"] });
+      queryClient.invalidateQueries({ queryKey: ["resource-search"] });
+      setUploadForm({
+        title: "",
+        author: "",
+        subject: "English",
+        gradeLevel: "9",
+        keywords: "",
+        accessLevel: "class-only",
+        description: "",
+        formatType: "digital",
+        totalCopies: "0",
+        shelfLocation: "",
+        publisher: "",
+        edition: "",
+        isbn: "",
+        language: "English",
+        file: null,
+      });
+      toast.success("Book uploaded successfully.");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Unable to upload book.");
+    },
+  });
+
+  const handleDelete = (resourceId, title) => {
+    if (!window.confirm(`Delete “${title}”? This cannot be undone.`)) {
+      return;
+    }
+    setActiveDeleteId(resourceId);
+    deleteMutation.mutate(resourceId, {
+      onSuccess: () => {
+        toast.success("Resource deleted successfully.");
+        setActiveDeleteId(null);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to delete resource.");
+        setActiveDeleteId(null);
+      },
+    });
+  };
 
   const isTeacher = user?.role === "teacher";
   const pageTitle = isTeacher ? "My Shelf Records" : "Operations Desk";
 
   const subjectOptions = useMemo(
-    () => ["English", "Mathematics", "Biology", "Chemistry", "Physics", "History"],
+    () => [
+      "English",
+      "Mathematics",
+      "Biology",
+      "Chemistry",
+      "Physics",
+      "History",
+    ],
     [],
   );
 
@@ -80,7 +160,8 @@ export default function ResourceManagement() {
       [resourceId]: {
         title: current[resourceId]?.title ?? resource.title ?? "",
         subject: current[resourceId]?.subject ?? resource.subject ?? "",
-        gradeLevel: current[resourceId]?.gradeLevel ?? resource.gradeLevel ?? "",
+        gradeLevel:
+          current[resourceId]?.gradeLevel ?? resource.gradeLevel ?? "",
         status: current[resourceId]?.status ?? resource.status ?? "approved",
         availableCopies:
           current[resourceId]?.availableCopies ?? resource.availableCopies ?? 0,
@@ -110,6 +191,7 @@ export default function ResourceManagement() {
 
   return (
     <div className="space-y-8">
+      <Toaster />
       <header className="rounded-[2rem] border border-zinc-200 bg-white p-7 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <p className="text-[11px] font-black uppercase tracking-[0.28em] text-emerald-600">
           Catalog Management
@@ -145,7 +227,10 @@ export default function ResourceManagement() {
               <input
                 value={physicalForm.title}
                 onChange={(e) =>
-                  setPhysicalForm((current) => ({ ...current, title: e.target.value }))
+                  setPhysicalForm((current) => ({
+                    ...current,
+                    title: e.target.value,
+                  }))
                 }
                 placeholder="Book title"
                 className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -153,7 +238,10 @@ export default function ResourceManagement() {
               <input
                 value={physicalForm.author}
                 onChange={(e) =>
-                  setPhysicalForm((current) => ({ ...current, author: e.target.value }))
+                  setPhysicalForm((current) => ({
+                    ...current,
+                    author: e.target.value,
+                  }))
                 }
                 placeholder="Author"
                 className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -161,7 +249,10 @@ export default function ResourceManagement() {
               <select
                 value={physicalForm.subject}
                 onChange={(e) =>
-                  setPhysicalForm((current) => ({ ...current, subject: e.target.value }))
+                  setPhysicalForm((current) => ({
+                    ...current,
+                    subject: e.target.value,
+                  }))
                 }
                 className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               >
@@ -185,7 +276,10 @@ export default function ResourceManagement() {
               <input
                 value={physicalForm.gradeLevel}
                 onChange={(e) =>
-                  setPhysicalForm((current) => ({ ...current, gradeLevel: e.target.value }))
+                  setPhysicalForm((current) => ({
+                    ...current,
+                    gradeLevel: e.target.value,
+                  }))
                 }
                 placeholder="Grade level"
                 className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -221,11 +315,11 @@ export default function ResourceManagement() {
                   resourceType: "reading",
                 })
               }
-            className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
-          >
-            <Library size={16} />
-            Register physical copies
-          </button>
+              className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
+            >
+              <Library size={16} />
+              Register physical copies
+            </button>
           </div>
 
           <div className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -271,6 +365,235 @@ export default function ResourceManagement() {
         </section>
       ) : null}
 
+      {!isTeacher ? (
+        <section className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <Upload size={22} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                Upload Digital Resource
+              </h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Add textbooks, guides, or other digital materials to the
+                catalog.
+              </p>
+            </div>
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!uploadForm.file) {
+                toast.error("Please select a file to upload.");
+                return;
+              }
+              const formData = new FormData();
+              formData.append("title", uploadForm.title);
+              formData.append("author", uploadForm.author);
+              formData.append("subject", uploadForm.subject);
+              formData.append("gradeLevel", uploadForm.gradeLevel);
+              formData.append("keywords", uploadForm.keywords);
+              formData.append("accessLevel", uploadForm.accessLevel);
+              formData.append("description", uploadForm.description);
+              formData.append("formatType", uploadForm.formatType);
+              formData.append("totalCopies", uploadForm.totalCopies);
+              formData.append("availableCopies", uploadForm.totalCopies);
+              formData.append("shelfLocation", uploadForm.shelfLocation);
+              formData.append("librarySection", "textbook");
+              formData.append(
+                "contentData",
+                JSON.stringify({
+                  publisher: uploadForm.publisher,
+                  edition: uploadForm.edition,
+                  isbn: uploadForm.isbn,
+                  language: uploadForm.language,
+                  resourceCategory: "textbook",
+                }),
+              );
+              formData.append("file", uploadForm.file);
+              uploadMutation.mutate(formData);
+            }}
+            className="mt-5 grid gap-4 md:grid-cols-2"
+          >
+            <input
+              value={uploadForm.title}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  title: e.target.value,
+                }))
+              }
+              placeholder="Book title"
+              required
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              value={uploadForm.author}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  author: e.target.value,
+                }))
+              }
+              placeholder="Author"
+              required
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <select
+              value={uploadForm.subject}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  subject: e.target.value,
+                }))
+              }
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            >
+              {subjectOptions.map((subject) => (
+                <option key={subject}>{subject}</option>
+              ))}
+            </select>
+            <select
+              value={uploadForm.gradeLevel}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  gradeLevel: e.target.value,
+                }))
+              }
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            >
+              {[9, 10, 11, 12].map((grade) => (
+                <option key={grade}>{grade}</option>
+              ))}
+            </select>
+            <input
+              value={uploadForm.publisher}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  publisher: e.target.value,
+                }))
+              }
+              placeholder="Publisher"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              value={uploadForm.edition}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  edition: e.target.value,
+                }))
+              }
+              placeholder="Edition"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              value={uploadForm.isbn}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  isbn: e.target.value,
+                }))
+              }
+              placeholder="ISBN"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              value={uploadForm.language}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  language: e.target.value,
+                }))
+              }
+              placeholder="Language"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  file: e.target.files[0],
+                }))
+              }
+              required
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              value={uploadForm.keywords}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  keywords: e.target.value,
+                }))
+              }
+              placeholder="Keywords"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <select
+              value={uploadForm.accessLevel}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  accessLevel: e.target.value,
+                }))
+              }
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            >
+              <option value="class-only">Class Only</option>
+              <option value="school-wide">School Wide</option>
+            </select>
+            <input
+              value={uploadForm.totalCopies}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  totalCopies: e.target.value,
+                }))
+              }
+              placeholder="Total Copies (0 for digital only)"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <input
+              value={uploadForm.shelfLocation}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  shelfLocation: e.target.value,
+                }))
+              }
+              placeholder="Shelf Location"
+              className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <textarea
+              value={uploadForm.description}
+              onChange={(e) =>
+                setUploadForm((current) => ({
+                  ...current,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="Description"
+              className="md:col-span-2 min-h-[110px] rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            />
+            <button
+              type="submit"
+              disabled={uploadMutation.isPending}
+              className="md:col-span-2 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-50"
+            >
+              <Upload size={16} />
+              {uploadMutation.isPending ? "Uploading..." : "Upload Resource"}
+            </button>
+          </form>
+        </section>
+      ) : null}
+
       <div className="grid gap-5">
         {resources.map((resource) => {
           const draft = drafts[resource.resourceId] || {};
@@ -301,11 +624,14 @@ export default function ResourceManagement() {
                     </h3>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                       {resource.subject || "General collection"}
-                      {resource.gradeLevel ? ` | Grade ${resource.gradeLevel}` : " | Open shelf"}
+                      {resource.gradeLevel
+                        ? ` | Grade ${resource.gradeLevel}`
+                        : " | Open shelf"}
                       {resource.formatType ? ` | ${resource.formatType}` : ""}
                     </p>
                     <p className="mt-2 text-xs font-semibold text-zinc-400">
-                      Cataloged by {resource.user?.firstName || "User"} {resource.user?.lastName || ""}
+                      Cataloged by {resource.user?.firstName || "User"}{" "}
+                      {resource.user?.lastName || ""}
                     </p>
                   </div>
                 </div>
@@ -315,7 +641,8 @@ export default function ResourceManagement() {
                     {resource.status || "approved"}
                   </span>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                    {resource.availableCopies || 0}/{resource.totalCopies || 0} copies
+                    {resource.availableCopies || 0}/{resource.totalCopies || 0}{" "}
+                    copies
                   </span>
                 </div>
               </div>
@@ -324,21 +651,36 @@ export default function ResourceManagement() {
                 <input
                   value={nextTitle}
                   onChange={(e) =>
-                    setDraftValue(resource.resourceId, "title", e.target.value, resource)
+                    setDraftValue(
+                      resource.resourceId,
+                      "title",
+                      e.target.value,
+                      resource,
+                    )
                   }
                   className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
                 <input
                   value={nextSubject}
                   onChange={(e) =>
-                    setDraftValue(resource.resourceId, "subject", e.target.value, resource)
+                    setDraftValue(
+                      resource.resourceId,
+                      "subject",
+                      e.target.value,
+                      resource,
+                    )
                   }
                   className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
                 <input
                   value={nextGrade}
                   onChange={(e) =>
-                    setDraftValue(resource.resourceId, "gradeLevel", e.target.value, resource)
+                    setDraftValue(
+                      resource.resourceId,
+                      "gradeLevel",
+                      e.target.value,
+                      resource,
+                    )
                   }
                   className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
@@ -346,7 +688,12 @@ export default function ResourceManagement() {
                   <select
                     value={nextStatus}
                     onChange={(e) =>
-                      setDraftValue(resource.resourceId, "status", e.target.value, resource)
+                      setDraftValue(
+                        resource.resourceId,
+                        "status",
+                        e.target.value,
+                        resource,
+                      )
                     }
                     className="rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                   >
@@ -401,11 +748,20 @@ export default function ResourceManagement() {
                 </button>
 
                 <button
-                  onClick={() => deleteMutation.mutate(resource.resourceId)}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/20"
+                  onClick={() =>
+                    handleDelete(resource.resourceId, resource.title)
+                  }
+                  disabled={
+                    activeDeleteId === resource.resourceId &&
+                    deleteMutation.isLoading
+                  }
+                  className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-950/20"
                 >
                   <Trash2 size={16} />
-                  Delete
+                  {activeDeleteId === resource.resourceId &&
+                  deleteMutation.isLoading
+                    ? "Deleting..."
+                    : "Delete"}
                 </button>
               </div>
             </article>

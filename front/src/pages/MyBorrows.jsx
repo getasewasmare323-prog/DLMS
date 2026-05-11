@@ -54,6 +54,22 @@ export default function MyBorrows() {
   );
   const returned = filteredBorrows.filter((item) => item.status === "returned");
 
+  // Calculate due date warnings
+  const getDueDateWarning = (dueAt) => {
+    if (!dueAt) return null;
+    const dueDate = new Date(dueAt);
+    const now = new Date();
+    const daysUntilDue = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+
+    if (daysUntilDue < 0) return { level: "overdue", message: "Overdue" };
+    if (daysUntilDue <= 1) return { level: "urgent", message: "Due tomorrow" };
+    if (daysUntilDue <= 3)
+      return { level: "warning", message: `Due in ${daysUntilDue} days` };
+    if (daysUntilDue <= 7)
+      return { level: "info", message: `Due in ${daysUntilDue} days` };
+    return null;
+  };
+
   if (isLibraryOperator ? borrowsLoading : dashboardLoading) {
     return (
       <div className="grid min-h-[50vh] place-items-center rounded-[2rem] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -145,6 +161,7 @@ export default function MyBorrows() {
             const isPhysical = borrow.borrowType === "physical";
             const isOpen =
               borrow.status === "active" || borrow.status === "overdue";
+            const dueWarning = getDueDateWarning(borrow.dueAt);
 
             return (
               <article
@@ -157,9 +174,32 @@ export default function MyBorrows() {
                       <span className="rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                         {borrow.borrowType}
                       </span>
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <span
+                        className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] ${
+                          borrow.status === "overdue"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                            : borrow.status === "active"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                        }`}
+                      >
                         {borrow.status}
                       </span>
+                      {dueWarning && (
+                        <span
+                          className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] ${
+                            dueWarning.level === "overdue"
+                              ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                              : dueWarning.level === "urgent"
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                : dueWarning.level === "warning"
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                  : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
+                          }`}
+                        >
+                          {dueWarning.message}
+                        </span>
+                      )}
                     </div>
                     <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
                       {borrow.resource?.title || "Library resource"}

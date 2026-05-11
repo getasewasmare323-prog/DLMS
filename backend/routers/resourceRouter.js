@@ -85,7 +85,7 @@ router.delete(
 router.post(
   "/registerPhysical",
   autController.jwtauth,
-  autController.librarianOrAdmin,
+  autController.librarian,
   resourceController.registerPhysicalResource,
 );
 router.get(

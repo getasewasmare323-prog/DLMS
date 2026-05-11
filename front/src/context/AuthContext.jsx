@@ -2,8 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 // import { r } from "../data/bookEndPoint";
 import { signupUser, loginUser, logOutUser } from "../data/userEndPoint";
 import { useQueryClient } from "@tanstack/react-query";
-import { useUser } from "../hooks/useResources";
-// import { useUser } from "../hooks/useResources";
+import { useUser } from "../hooks/useUser";
 // import { Navigate } from "react-router-dom";
 
 const AuthContext = createContext();

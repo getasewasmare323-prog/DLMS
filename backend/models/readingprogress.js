@@ -34,6 +34,30 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: true,
       },
+      totalPages: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      timeSpent: {
+        type: DataTypes.INTEGER, // in minutes
+        allowNull: false,
+        defaultValue: 0,
+      },
+      bookmarks: {
+        type: DataTypes.JSONB, // Array of page numbers or positions
+        allowNull: true,
+        defaultValue: [],
+      },
+      notes: {
+        type: DataTypes.JSONB, // Array of note objects {page, content, createdAt}
+        allowNull: true,
+        defaultValue: [],
+      },
+      lastReadAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: DataTypes.NOW,
+      },
       completedAt: {
         type: DataTypes.DATE,
         allowNull: true,

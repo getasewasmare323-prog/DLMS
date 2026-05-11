@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import AppLayout from "./ui/AppLayout";
 import LoginForm from "./pages/LoginForm";
 import SignupForm from "./pages/SignupForm";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Loading from "./pages/Loading";
 import Dashboard from "./pages/DashBoard";
 import SearchResources from "./pages/SearchResources";
@@ -13,7 +15,6 @@ import UploadTextbook from "./pages/UploadTextbook";
 import UploadDocument from "./pages/UploadDocument";
 import DiscussionForum from "./pages/DiscussionForum";
 import ThreadDetail from "./pages/ThreadDetail";
-import ResourceRanking from "./pages/ResourceRanking";
 import VideoLibrary from "./pages/VideoLibrary";
 import UploadVideo from "./pages/UploadVideo";
 import LandingPage from "./pages/LandingPage";
@@ -31,9 +32,10 @@ import LibrarianCirculation from "./pages/LibrarianCirculation";
 import ResourceDetail from "./pages/ResourceDetail";
 import MyBorrows from "./pages/MyBorrows";
 import SavedResources from "./pages/SavedResources";
+import MyReservations from "./pages/MyReservations";
+import TeacherVideoManagement from "./pages/TeacherVideoManagement";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -45,25 +47,26 @@ const queryClient = new QueryClient({
 const ROLE_ACCESS = {
   dashboard: ["admin", "student", "teacher", "librarian"],
   search: ["admin", "student", "teacher", "librarian"],
-  materials: ["admin", "student", "teacher", "librarian"],
+  materials: ["student", "teacher"],
   reader: ["student", "teacher", "librarian"],
-  uploadTextbook: ["librarian"],
+  uploadTextbook: ["teacher", "librarian"],
   uploadDocs: ["teacher"],
   createExercise: ["teacher"],
   exercises: ["student"],
   exercisePractice: ["student"],
   resourceManagement: ["teacher", "librarian"],
-  forum: ["student", "teacher", "librarian"],
-  threadDetail: ["student", "teacher", "librarian"],
+  forum: ["student", "teacher"],
+  threadDetail: ["student", "teacher"],
   videos: ["student"],
   uploadVideos: ["teacher"],
-  rankings: ["student"],
+  teacherVideoManagement: ["teacher"],
   adminUsers: ["admin"],
   adminReports: ["admin"],
   adminSettings: ["admin"],
   circulation: ["librarian", "admin"],
-  myBorrows: ["admin", "student", "teacher", "librarian"],
-  savedResources: ["admin", "student", "teacher", "librarian"],
+  myBorrows: ["student", "teacher"],
+  myReservations: ["student", "teacher"],
+  savedResources: ["student", "teacher"],
   profile: ["admin", "student", "teacher", "librarian"],
   settings: ["admin", "student", "teacher", "librarian"],
 };
@@ -109,6 +112,12 @@ function Routing() {
       path: "my-borrows",
       role: ROLE_ACCESS.myBorrows,
       element: <MyBorrows />,
+    },
+    {
+      key: "my-reservations",
+      path: "my-reservations",
+      role: ROLE_ACCESS.myReservations,
+      element: <MyReservations />,
     },
     {
       key: "saved-resources",
@@ -261,6 +270,12 @@ function Routing() {
       element: <UploadVideo />,
     },
     {
+      key: "teacher-video-management",
+      path: "teacher/videos/manage",
+      role: ROLE_ACCESS.teacherVideoManagement,
+      element: <TeacherVideoManagement />,
+    },
+    {
       key: "teacher-upload-docs",
       path: "teacher/upload-docs",
       role: ROLE_ACCESS.uploadDocs,
@@ -277,12 +292,6 @@ function Routing() {
       path: "librarian/register-books",
       role: ROLE_ACCESS.uploadTextbook,
       element: <UploadTextbook />,
-    },
-    {
-      key: "rankings",
-      path: "rankings",
-      role: ROLE_ACCESS.rankings,
-      element: <ResourceRanking />,
     },
     {
       key: "admin-users",
@@ -319,6 +328,8 @@ function Routing() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/signup" element={<SignupForm />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         {isLoading ? (
           <Route path="/*" element={<Loading />} />
         ) : (

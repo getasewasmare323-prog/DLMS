@@ -78,6 +78,32 @@ const repairLegacySchema = async () => {
   `);
 };
 
+const repairResourceAssociations = async () => {
+  await sequelize.query(`
+    DELETE FROM "Notifications"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+    DELETE FROM "Bookmarks"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+    DELETE FROM "BorrowTransactions"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+    DELETE FROM "PhysicalCopies"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+    DELETE FROM "ReadingListItems"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+    DELETE FROM "ReadingProgresses"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+    DELETE FROM "Ratings"
+    WHERE "resourceId" IS NOT NULL
+      AND "resourceId" NOT IN (SELECT "resourceId" FROM "Resources");
+  `);
+};
+
 const startServer = async () => {
   try {
     await sequelize.authenticate();
@@ -85,6 +111,7 @@ const startServer = async () => {
 
     if (process.env.NODE_ENV !== "production") {
       await repairLegacySchema();
+      await repairResourceAssociations();
       await sequelize.sync({ alter: true });
       console.log("Database schema synchronized for development.");
     }

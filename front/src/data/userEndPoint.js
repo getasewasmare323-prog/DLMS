@@ -8,14 +8,26 @@ async function readJsonResponse(response, fallbackMessage) {
   return result;
 }
 
-export async function signupUser(firstName, lastName, email, password, classLevel) {
+export async function signupUser(
+  firstName,
+  lastName,
+  email,
+  password,
+  classLevel,
+) {
   try {
     const resp = await fetch(buildApiUrl("/user/signup"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ firstName, lastName, email, password, classLevel }),
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email,
+        password,
+        classLevel,
+      }),
       credentials: "include",
     });
 
@@ -107,6 +119,45 @@ export async function markNotificationsRead() {
     console.error("Error marking notifications as read:", error);
   }
 }
+
+export async function forgotPassword(email) {
+  try {
+    const resp = await fetch(buildApiUrl("/user/forgot-password"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await resp.json();
+    console.log("forgot password response", data);
+    return data;
+  } catch (error) {
+    console.error("error during forgot password", error);
+    return { status: "error", error };
+  }
+}
+
+export async function resetPassword(token, password) {
+  try {
+    const resp = await fetch(buildApiUrl("/user/reset-password"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, password }),
+    });
+
+    const data = await resp.json();
+    console.log("reset password response", data);
+    return data;
+  } catch (error) {
+    console.error("error during reset password", error);
+    return { status: "error", error };
+  }
+}
+
 export async function getAllUser() {
   try {
     const result = await fetch(buildApiUrl("/admin/allUsers"), {
@@ -219,12 +270,15 @@ export async function upsertSystemSetting(payload) {
 }
 
 export async function reviewResource(resourceId, payload) {
-  const response = await fetch(buildApiUrl(`/admin/resources/${resourceId}/review`), {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    credentials: "include",
-  });
+  const response = await fetch(
+    buildApiUrl(`/admin/resources/${resourceId}/review`),
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    },
+  );
   return readJsonResponse(response, "Failed to review resource");
 }
 

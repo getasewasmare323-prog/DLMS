@@ -12,9 +12,10 @@ import {
   searchResources,
   getTeacherMaterials,
   getTextbooks,
+  getMyReservations,
 } from "../data/resourceEndpoint";
-import { fetchMe } from "../data/userEndPoint";
 import { getAllUser } from "../data/userEndPoint";
+import { useUser } from "./useUser";
 
 export function useVideos() {
   const { user } = useUser();
@@ -28,20 +29,6 @@ export function useVideos() {
     enabled: !!user, // Only fetch videos if user is logged in
   });
   return { videos, error, isLoading };
-}
-
-export function useUser() {
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery({
-    queryKey: ["user"],
-    queryFn: fetchMe,
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-  return { user, error, isLoading };
 }
 
 export function useBooks() {
@@ -175,4 +162,14 @@ export function useOverdueBorrows() {
     enabled: !!user && (user.role === "admin" || user.role === "librarian"),
   });
   return { overdueBorrows: data || [], error, isLoading };
+}
+
+export function useMyReservations() {
+  const { user } = useUser();
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["reservations"],
+    queryFn: getMyReservations,
+    enabled: !!user,
+  });
+  return { reservations: data || [], error, isLoading };
 }

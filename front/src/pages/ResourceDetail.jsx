@@ -20,9 +20,9 @@ import { buildAssetUrl } from "../lib/api";
 import { useResource } from "../hooks/useResources";
 import {
   addBookmark,
-  borrowDigitalResource,
   borrowPhysicalResource,
   removeBookmark,
+  createReservation,
 } from "../data/resourceEndpoint";
 import { useBookmarks } from "../hooks/useResources";
 
@@ -43,18 +43,17 @@ export default function ResourceDetail() {
   };
 
   const bookmarkMutation = useMutation({
-    mutationFn: () =>
-      bookmarked ? removeBookmark(id) : addBookmark(id),
-    onSuccess: invalidateLibraryQueries,
-  });
-
-  const digitalBorrowMutation = useMutation({
-    mutationFn: () => borrowDigitalResource(id),
+    mutationFn: () => (bookmarked ? removeBookmark(id) : addBookmark(id)),
     onSuccess: invalidateLibraryQueries,
   });
 
   const physicalBorrowMutation = useMutation({
     mutationFn: () => borrowPhysicalResource(id),
+    onSuccess: invalidateLibraryQueries,
+  });
+
+  const reserveMutation = useMutation({
+    mutationFn: () => createReservation(id),
     onSuccess: invalidateLibraryQueries,
   });
 
@@ -87,8 +86,9 @@ export default function ResourceDetail() {
     resource.formatType !== "digital" && (resource.availableCopies || 0) > 0;
   const keywords = Array.isArray(resource.keywords) ? resource.keywords : [];
   const uploaderName =
-    [resource.user?.firstName, resource.user?.lastName].filter(Boolean).join(" ") ||
-    "School staff";
+    [resource.user?.firstName, resource.user?.lastName]
+      .filter(Boolean)
+      .join(" ") || "School staff";
 
   return (
     <div className="space-y-6">
@@ -110,7 +110,9 @@ export default function ResourceDetail() {
           </button>
           {resource.filePath ? (
             <button
-              onClick={() => window.open(buildAssetUrl(resource.filePath), "_blank")}
+              onClick={() =>
+                window.open(buildAssetUrl(resource.filePath), "_blank")
+              }
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
             >
               <ExternalLink size={16} />
@@ -126,7 +128,9 @@ export default function ResourceDetail() {
             <Badge>{resource.resourceType}</Badge>
             <Badge>{resource.formatType || "digital"}</Badge>
             {resource.status ? <Badge>{resource.status}</Badge> : null}
-            {resource.gradeLevel ? <Badge>{`Grade ${resource.gradeLevel}`}</Badge> : null}
+            {resource.gradeLevel ? (
+              <Badge>{`Grade ${resource.gradeLevel}`}</Badge>
+            ) : null}
           </div>
 
           <h1 className="mt-5 font-serif text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -148,17 +152,29 @@ export default function ResourceDetail() {
               label="Added"
               value={formatDate(resource.createdAt)}
             />
-            <MetaRow icon={Tag} label="Subject" value={resource.subject || "General"} />
+            <MetaRow
+              icon={Tag}
+              label="Subject"
+              value={resource.subject || "General"}
+            />
             <MetaRow
               icon={Library}
               label="Availability"
               value={getAvailabilityText(resource)}
             />
             {resource.shelfLocation ? (
-              <MetaRow icon={MapPin} label="Shelf Location" value={resource.shelfLocation} />
+              <MetaRow
+                icon={MapPin}
+                label="Shelf Location"
+                value={resource.shelfLocation}
+              />
             ) : null}
             {contentData.language ? (
-              <MetaRow icon={BookOpen} label="Language" value={contentData.language} />
+              <MetaRow
+                icon={BookOpen}
+                label="Language"
+                value={contentData.language}
+              />
             ) : null}
           </div>
 
@@ -188,6 +204,7 @@ export default function ResourceDetail() {
                     state: {
                       title: resource.title,
                       url: buildAssetUrl(resource.filePath),
+                      resourceId: resource.resourceId,
                     },
                   })
                 }
@@ -199,21 +216,13 @@ export default function ResourceDetail() {
             ) : null}
             {canWatchVideo ? (
               <button
-                onClick={() => window.open(buildAssetUrl(resource.filePath), "_blank")}
+                onClick={() =>
+                  window.open(buildAssetUrl(resource.filePath), "_blank")
+                }
                 className="inline-flex items-center gap-2 rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white hover:bg-sky-700"
               >
                 <PlayCircle size={16} />
                 Watch Video
-              </button>
-            ) : null}
-            {resource.resourceType === "reading" && resource.formatType !== "physical" ? (
-              <button
-                onClick={() => digitalBorrowMutation.mutate()}
-                disabled={digitalBorrowMutation.isPending}
-                className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 px-5 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-950/20"
-              >
-                <Download size={16} />
-                Digital Borrow
               </button>
             ) : null}
             {canBorrowPhysical ? (
@@ -224,6 +233,15 @@ export default function ResourceDetail() {
               >
                 <Library size={16} />
                 Physical Borrow
+              </button>
+            ) : resource.formatType !== "digital" ? (
+              <button
+                onClick={() => reserveMutation.mutate()}
+                disabled={reserveMutation.isPending}
+                className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 px-5 py-3 text-sm font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-60 dark:border-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-950/20"
+              >
+                <Clock size={16} />
+                Reserve Item
               </button>
             ) : null}
           </div>
@@ -237,7 +255,10 @@ export default function ResourceDetail() {
               { label: "Edition", value: contentData.edition },
               { label: "ISBN / Catalog No.", value: contentData.isbn },
               { label: "Document Type", value: contentData.documentType },
-              { label: "Resource Category", value: contentData.resourceCategory },
+              {
+                label: "Resource Category",
+                value: contentData.resourceCategory,
+              },
               { label: "Access Level", value: resource.accessLevel },
             ]}
           />
@@ -255,7 +276,8 @@ export default function ResourceDetail() {
           <div className="rounded-[2rem] bg-gradient-to-br from-emerald-600 to-teal-700 p-6 text-white shadow-xl shadow-emerald-950/20">
             <h3 className="text-lg font-bold">Library Use Tip</h3>
             <p className="mt-2 text-sm leading-6 text-emerald-50/90">
-              Use the metadata on this page to verify edition, shelf location, and access scope before borrowing or assigning this resource.
+              Use the metadata on this page to verify edition, shelf location,
+              and access scope before borrowing or assigning this resource.
             </p>
           </div>
         </aside>
@@ -287,10 +309,17 @@ function MetaRow({ icon: Icon, label, value }) {
 function MetadataCard({ title, items }) {
   return (
     <section className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{title}</h3>
+      <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+        {title}
+      </h3>
       <div className="mt-4 space-y-3">
         {items
-          .filter((item) => item.value !== null && item.value !== undefined && item.value !== "")
+          .filter(
+            (item) =>
+              item.value !== null &&
+              item.value !== undefined &&
+              item.value !== "",
+          )
           .map((item) => (
             <div
               key={item.label}

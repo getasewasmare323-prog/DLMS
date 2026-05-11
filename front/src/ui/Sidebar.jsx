@@ -17,6 +17,7 @@ import {
   Video,
   Repeat,
   Clock3,
+  Download,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -134,9 +135,13 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           roles: ["student", "teacher", "librarian", "admin"],
         },
         {
-          to: roleColor === "teacher" ? "/teacher/resources/manage" : "/librarian/catalog",
+          to:
+            roleColor === "teacher"
+              ? "/teacher/resources/manage"
+              : "/librarian/catalog",
           icon: Book,
-          label: roleColor === "teacher" ? "My Resource Desk" : "Catalog Operations",
+          label:
+            roleColor === "teacher" ? "My Resource Desk" : "Catalog Operations",
           roles: ["teacher", "librarian"],
         },
         {
@@ -154,13 +159,19 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           to: "/my-borrows",
           icon: Clock3,
           label: "My Borrows",
-          roles: ["student", "teacher", "librarian", "admin"],
+          roles: ["student", "teacher"],
+        },
+        {
+          to: "/my-reservations",
+          icon: Bookmark,
+          label: "My Reservations",
+          roles: ["student", "teacher"],
         },
         {
           to: "/saved-resources",
-          icon: Bookmark,
+          icon: Star,
           label: "Saved Resources",
-          roles: ["student", "teacher", "librarian", "admin"],
+          roles: ["student", "teacher"],
         },
         {
           to: "/exercises",
@@ -172,12 +183,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           to: "/catalog/videos",
           icon: Video,
           label: "Video Lessons",
-          roles: ["student"],
-        },
-        {
-          to: "/rankings",
-          icon: Star,
-          label: "Top Resources",
           roles: ["student"],
         },
       ],

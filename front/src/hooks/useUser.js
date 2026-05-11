@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAllUser } from "../data/userEndPoint";
+import { fetchMe } from "../data/userEndPoint";
 
 export function useUser() {
   const {
@@ -12,6 +12,5 @@ export function useUser() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
-  console.log("useUser hook - user data:", user);
   return { user, error, isLoading };
 }

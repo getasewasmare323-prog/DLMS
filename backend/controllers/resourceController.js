@@ -1,4 +1,14 @@
-const { Notification, PhysicalCopy, Resource, User } = require("../models");
+const {
+  Notification,
+  PhysicalCopy,
+  Resource,
+  User,
+  Bookmark,
+  BorrowTransaction,
+  ReadingListItem,
+  ReadingProgress,
+  Rating,
+} = require("../models");
 const { Op } = require("sequelize");
 const { v4: uuidv4 } = require("uuid");
 const sendMail = require("../middleware/emailService");
@@ -213,19 +223,25 @@ exports.getVideoResources = async (req, res) => {
 exports.getManagedResources = async (req, res) => {
   try {
     const where = {};
+    const include = [
+      {
+        model: User,
+        as: "user",
+        attributes: ["userId", "firstName", "lastName", "role"],
+      },
+    ];
+
     if (req.user.role === "teacher") {
       where.userId = req.user.userId;
+    } else if (req.user.role === "librarian") {
+      // Librarians should not see teachers' materials
+      include[0].where = { role: { [Op.ne]: "teacher" } };
+      include[0].required = true; // to inner join
     }
 
     const resources = await Resource.findAll({
       where,
-      include: [
-        {
-          model: User,
-          as: "user",
-          attributes: ["userId", "firstName", "lastName", "role"],
-        },
-      ],
+      include,
       order: [["createdAt", "DESC"]],
     });
 
@@ -240,6 +256,13 @@ exports.deleteManagedResource = async (req, res) => {
   try {
     const resource = await Resource.findOne({
       where: { resourceId: req.params.id },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["role"],
+        },
+      ],
     });
 
     if (!resource) {
@@ -255,10 +278,51 @@ exports.deleteManagedResource = async (req, res) => {
       });
     }
 
-    await resource.destroy();
+    if (req.user.role === "librarian" && resource.user?.role === "teacher") {
+      return res.status(403).json({
+        status: "fail",
+        error: "Librarians cannot manage teachers' materials",
+      });
+    }
+
+    await Resource.sequelize.transaction(async (transaction) => {
+      await Promise.all([
+        Bookmark.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+        BorrowTransaction.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+        PhysicalCopy.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+        ReadingListItem.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+        ReadingProgress.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+        Rating.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+        Notification.destroy({
+          where: { resourceId: resource.resourceId },
+          transaction,
+        }),
+      ]);
+
+      await resource.destroy({ transaction });
+    });
+
     res.status(200).json({ status: "ok" });
   } catch (err) {
-    console.error("Delete managed resource error:", err.message);
+    console.error("Delete managed resource error:", err);
     res.status(500).json({ status: "error", error: "Internal server error" });
   }
 };
@@ -315,10 +379,10 @@ exports.searchResources = async (req, res) => {
     if (q) {
       andConditions.push({
         [Op.or]: [
-        { title: { [Op.iLike]: `%${q}%` } },
-        { subject: { [Op.iLike]: `%${q}%` } },
-        { author: { [Op.iLike]: `%${q}%` } },
-        { description: { [Op.iLike]: `%${q}%` } },
+          { title: { [Op.iLike]: `%${q}%` } },
+          { subject: { [Op.iLike]: `%${q}%` } },
+          { author: { [Op.iLike]: `%${q}%` } },
+          { description: { [Op.iLike]: `%${q}%` } },
         ],
       });
     }
@@ -335,12 +399,18 @@ exports.searchResources = async (req, res) => {
     if (formatType) {
       andConditions.push({ formatType });
     }
-    if (status && (req.user?.role === "admin" || req.user?.role === "librarian")) {
+    if (
+      status &&
+      (req.user?.role === "admin" || req.user?.role === "librarian")
+    ) {
       andConditions.push({ status });
     }
     if (availability === "available") {
       andConditions.push({
-        [Op.or]: [{ formatType: "digital" }, { availableCopies: { [Op.gt]: 0 } }],
+        [Op.or]: [
+          { formatType: "digital" },
+          { availableCopies: { [Op.gt]: 0 } },
+        ],
       });
     }
 
@@ -456,7 +526,10 @@ exports.uploadVideo = async (req, res) => {
 
 exports.registerPhysicalResource = async (req, res) => {
   try {
-    const totalCopies = Math.max(Number.parseInt(req.body.totalCopies, 10) || 1, 1);
+    const totalCopies = Math.max(
+      Number.parseInt(req.body.totalCopies, 10) || 1,
+      1,
+    );
     const status = req.user.role === "teacher" ? "pending" : "approved";
     const resource = await Resource.create({
       resourceId: uuidv4(),
@@ -498,15 +571,33 @@ exports.registerPhysicalResource = async (req, res) => {
 
 exports.updateManagedResource = async (req, res) => {
   try {
-    const resource = await Resource.findByPk(req.params.id);
+    const resource = await Resource.findOne({
+      where: { resourceId: req.params.id },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["role"],
+        },
+      ],
+    });
     if (!resource) {
-      return res.status(404).json({ status: "fail", error: "Resource not found" });
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Resource not found" });
     }
 
     if (req.user.role === "teacher" && resource.userId !== req.user.userId) {
       return res.status(403).json({
         status: "fail",
         error: "You are not allowed to update this resource",
+      });
+    }
+
+    if (req.user.role === "librarian" && resource.user?.role === "teacher") {
+      return res.status(403).json({
+        status: "fail",
+        error: "Librarians cannot manage teachers' materials",
       });
     }
 
