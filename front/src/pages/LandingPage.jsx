@@ -108,7 +108,7 @@ export default function LandingPage() {
             <StatRow
               icon={GraduationCap}
               title="Study desks"
-              text="Exercises and discussion prompts aligned to Ethiopian secondary school grades."
+              text="Exercises and guided practice aligned to Ethiopian secondary school grades."
             />
           </div>
         </div>

@@ -102,7 +102,7 @@ export default function Dashboard() {
       ],
       primaryTitle: "Your hybrid library shelf is ready",
       primaryDesc:
-        "Borrow digital books, track physical returns, and continue reading from where you stopped.",
+        "Open digital books instantly, track physical returns, and continue reading from where you stopped.",
       primaryAction: () => navigate("/catalog"),
       primaryActionLabel: "Open catalog",
     },
@@ -286,8 +286,8 @@ export default function Dashboard() {
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/80 p-6 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-400">
-                No active borrow transactions yet. Open the catalog to borrow
-                digital or physical resources.
+                No active borrow transactions yet. Open the catalog to access
+                digital resources or borrow physical copies.
               </div>
             )}
           </div>
@@ -321,83 +321,85 @@ export default function Dashboard() {
         </aside>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h3 className="mb-4 flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            <Bookmark size={18} className="text-emerald-600" />
-            Saved Resources
-          </h3>
-          <div className="space-y-3">
-            {bookmarks.length ? (
-              bookmarks.slice(0, 4).map((bookmark) => (
-                <div
-                  key={bookmark.bookmarkId}
-                  className="flex items-center justify-between rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/70"
-                >
-                  <div>
-                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-                      {bookmark.resource?.title}
-                    </p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {bookmark.resource?.subject || "General"}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => navigate("/saved-resources")}
-                    className="text-xs font-bold text-emerald-600"
+      {(role === "student" || role === "teacher") && (
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="mb-4 flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              <Bookmark size={18} className="text-emerald-600" />
+              Saved Resources
+            </h3>
+            <div className="space-y-3">
+              {bookmarks.length ? (
+                bookmarks.slice(0, 4).map((bookmark) => (
+                  <div
+                    key={bookmark.bookmarkId}
+                    className="flex items-center justify-between rounded-2xl bg-zinc-50 px-4 py-3 dark:bg-zinc-800/70"
                   >
-                    Open
-                  </button>
-                </div>
-              ))
-            ) : (
-              <EmptyPanel text="Bookmarks you save from the catalog will appear here." />
-            )}
+                    <div>
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {bookmark.resource?.title}
+                      </p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {bookmark.resource?.subject || "General"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate("/saved-resources")}
+                      className="text-xs font-bold text-emerald-600"
+                    >
+                      Open
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <EmptyPanel text="Bookmarks you save from the catalog will appear here." />
+              )}
+            </div>
+            {bookmarks.length ? (
+              <button
+                onClick={() => navigate("/saved-resources")}
+                className="mt-4 text-sm font-bold text-emerald-600"
+              >
+                View all saved resources
+              </button>
+            ) : null}
           </div>
-          {bookmarks.length ? (
-            <button
-              onClick={() => navigate("/saved-resources")}
-              className="mt-4 text-sm font-bold text-emerald-600"
-            >
-              View all saved resources
-            </button>
-          ) : null}
-        </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h3 className="mb-4 flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            <RefreshCcw size={18} className="text-emerald-600" />
-            Reading Progress
-          </h3>
-          <div className="space-y-3">
-            {progressEntries.length ? (
-              progressEntries.slice(0, 4).map((entry) => (
-                <div
-                  key={entry.progressId}
-                  className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800/70"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-                      {entry.resource?.title}
-                    </p>
-                    <span className="text-sm font-bold text-emerald-600">
-                      {entry.progressPercent || 0}%
-                    </span>
+          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <h3 className="mb-4 flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              <RefreshCcw size={18} className="text-emerald-600" />
+              Reading Progress
+            </h3>
+            <div className="space-y-3">
+              {progressEntries.length ? (
+                progressEntries.slice(0, 4).map((entry) => (
+                  <div
+                    key={entry.progressId}
+                    className="rounded-2xl bg-zinc-50 p-4 dark:bg-zinc-800/70"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {entry.resource?.title}
+                      </p>
+                      <span className="text-sm font-bold text-emerald-600">
+                        {entry.progressPercent || 0}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                      <div
+                        className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${entry.progressPercent || 0}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-                    <div
-                      className="h-full rounded-full bg-emerald-500"
-                      style={{ width: `${entry.progressPercent || 0}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyPanel text="Reading progress updates will appear after you start tracking a resource." />
-            )}
+                ))
+              ) : (
+                <EmptyPanel text="Reading progress updates will appear after you start tracking a resource." />
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {role === "teacher" && (
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

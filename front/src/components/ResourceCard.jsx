@@ -52,6 +52,7 @@ export default function ResourceCard({
   const canBorrowPhysical =
     resource.formatType !== "digital" && (resource.availableCopies || 0) > 0;
   const isPending = resource.status === "pending";
+  const canBookmark = user?.role === "teacher" || user?.role === "student";
 
   const invalidateLibraryQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["books"] });
@@ -203,18 +204,20 @@ export default function ResourceCard({
               </button>
             )}
 
-            <button
-              onClick={() => bookmarkMutation.mutate()}
-              disabled={bookmarkMutation.isPending}
-              className="rounded-xl border border-zinc-200 bg-white px-3 text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-              aria-label="Save Resource"
-            >
-              {bookmarked ? (
-                <BookmarkCheck size={17} />
-              ) : (
-                <Bookmark size={17} />
-              )}
-            </button>
+            {canBookmark && (
+              <button
+                onClick={() => bookmarkMutation.mutate()}
+                disabled={bookmarkMutation.isPending}
+                className="rounded-xl border border-zinc-200 bg-white px-3 text-zinc-600 transition-colors hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                aria-label="Save Resource"
+              >
+                {bookmarked ? (
+                  <BookmarkCheck size={17} />
+                ) : (
+                  <Bookmark size={17} />
+                )}
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">

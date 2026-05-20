@@ -129,7 +129,7 @@ export function useBookmarks() {
   const { data, error, isLoading } = useQuery({
     queryKey: ["bookmarks"],
     queryFn: getBookmarks,
-    enabled: !!user,
+    enabled: !!user && (user.role === "teacher" || user.role === "student"),
   });
   return { bookmarks: data || [], error, isLoading };
 }
@@ -139,7 +139,7 @@ export function useReadingLists() {
   const { data, error, isLoading } = useQuery({
     queryKey: ["reading-lists"],
     queryFn: getReadingLists,
-    enabled: !!user,
+    enabled: !!user && (user.role === "teacher" || user.role === "student"),
   });
   return { readingLists: data || [], error, isLoading };
 }

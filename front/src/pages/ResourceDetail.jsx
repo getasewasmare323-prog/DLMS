@@ -16,6 +16,7 @@ import {
   Tag,
   User,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { buildAssetUrl } from "../lib/api";
 import { useResource } from "../hooks/useResources";
 import {
@@ -30,9 +31,11 @@ export default function ResourceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { resource, isLoading, error } = useResource(id);
   const { bookmarks = [] } = useBookmarks();
   const bookmarked = bookmarks.some((item) => item.resourceId === id);
+  const canBookmark = user?.role === "teacher" || user?.role === "student";
 
   const invalidateLibraryQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["resource", id] });
@@ -102,12 +105,18 @@ export default function ResourceDetail() {
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => bookmarkMutation.mutate()}
-            className="rounded-xl border border-zinc-200 bg-white p-2.5 text-zinc-500 transition-colors hover:text-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-          >
-            {bookmarked ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
-          </button>
+          {canBookmark && (
+            <button
+              onClick={() => bookmarkMutation.mutate()}
+              className="rounded-xl border border-zinc-200 bg-white p-2.5 text-zinc-500 transition-colors hover:text-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              {bookmarked ? (
+                <BookmarkCheck size={18} />
+              ) : (
+                <Bookmark size={18} />
+              )}
+            </button>
+          )}
           {resource.filePath ? (
             <button
               onClick={() =>

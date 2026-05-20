@@ -17,7 +17,6 @@ import {
   Video,
   Repeat,
   Clock3,
-  Download,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -132,7 +131,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           to: "/catalog/classroom-materials",
           icon: FileText,
           label: "Classroom Materials",
-          roles: ["student", "teacher", "librarian", "admin"],
+          roles: ["student", "teacher"],
         },
         {
           to:

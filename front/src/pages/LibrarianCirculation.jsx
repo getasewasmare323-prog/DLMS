@@ -168,7 +168,7 @@ export default function LibrarianCirculation() {
                 Active and Recent Transactions
               </h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Process physical returns and monitor digital access periods.
+                Process physical returns and monitor recent circulation activity.
               </p>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -255,8 +255,8 @@ export default function LibrarianCirculation() {
                 activity.
               </p>
               <p>
-                Digital transactions close automatically when the access window
-                ends, but can still be marked returned here if needed.
+                Use borrowing reports and the catalog desk to keep copy counts,
+                return flow, and overdue handling accurate.
               </p>
             </div>
           </section>

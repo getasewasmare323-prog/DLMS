@@ -44,7 +44,10 @@ export default function SearchResources() {
 
   const { resources, error, isLoading } = useResourceSearch(filters);
   const { bookmarks = [] } = useBookmarks();
-  const bookmarkIds = new Set(bookmarks.map((item) => item.resourceId));
+  const canBookmark = user?.role === "teacher" || user?.role === "student";
+  const bookmarkIds = canBookmark
+    ? new Set(bookmarks.map((item) => item.resourceId))
+    : new Set();
 
   const subjects = [
     "",
@@ -92,8 +95,8 @@ export default function SearchResources() {
               Catalog Search
             </h1>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Search digital and physical resources, check availability, and
-              borrow from one school catalog.
+              Search digital and physical resources, check availability, access
+              digital items, and borrow physical copies from one school catalog.
             </p>
           </div>
 
@@ -238,7 +241,7 @@ export default function SearchResources() {
               setGradeLevel("");
               setFormatType("");
               setAvailability("");
-              setResourceType("reading");
+              setResourceType("");
               setStatus("");
             }}
             className="mt-2 font-semibold text-emerald-600"

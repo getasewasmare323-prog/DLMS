@@ -2,7 +2,6 @@ const userRouter = require("./routers/userRouter");
 const resourceRouter = require("./routers/resourceRouter");
 const adminRouter = require("./routers/adminRouter");
 const borrowRouter = require("./routers/borrowRouter");
-const forumRouter = require("./routers/forumRouter");
 const learningRouter = require("./routers/learningRouter");
 const teacherRouter = require("./routers/teacherRouter");
 const exerciseRouter = require("./routers/exerciseRouter");
@@ -11,7 +10,6 @@ const cors = require("cors");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const sendMail = require("./middleware/emailService");
 const { sequelize } = require("./models");
 
 const app = express();
@@ -61,7 +59,6 @@ app.get("/", (req, res) => {
 app.use("/user", userRouter);
 app.use("/resources", resourceRouter);
 app.use("/exercises", exerciseRouter);
-app.use("/forum", forumRouter);
 app.use("/teacher", teacherRouter);
 app.use("/admin", adminRouter);
 app.use("/borrows", borrowRouter);

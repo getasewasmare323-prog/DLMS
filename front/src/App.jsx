@@ -13,8 +13,6 @@ import SearchResources from "./pages/SearchResources";
 import TeacherMaterials from "./pages/TeacherMaterials";
 import UploadTextbook from "./pages/UploadTextbook";
 import UploadDocument from "./pages/UploadDocument";
-import DiscussionForum from "./pages/DiscussionForum";
-import ThreadDetail from "./pages/ThreadDetail";
 import VideoLibrary from "./pages/VideoLibrary";
 import UploadVideo from "./pages/UploadVideo";
 import LandingPage from "./pages/LandingPage";
@@ -55,15 +53,13 @@ const ROLE_ACCESS = {
   exercises: ["student"],
   exercisePractice: ["student"],
   resourceManagement: ["teacher", "librarian"],
-  forum: ["student", "teacher"],
-  threadDetail: ["student", "teacher"],
   videos: ["student"],
   uploadVideos: ["teacher"],
   teacherVideoManagement: ["teacher"],
   adminUsers: ["admin"],
   adminReports: ["admin"],
   adminSettings: ["admin"],
-  circulation: ["librarian", "admin"],
+  circulation: ["librarian"],
   myBorrows: ["student", "teacher"],
   myReservations: ["student", "teacher"],
   savedResources: ["student", "teacher"],
@@ -232,18 +228,6 @@ function Routing() {
       path: "librarian/circulation",
       role: ROLE_ACCESS.circulation,
       element: <LibrarianCirculation />,
-    },
-    {
-      key: "forum",
-      path: "forum",
-      role: ROLE_ACCESS.forum,
-      element: <DiscussionForum />,
-    },
-    {
-      key: "thread-detail",
-      path: "forum/:id",
-      role: ROLE_ACCESS.threadDetail,
-      element: <ThreadDetail />,
     },
     {
       key: "videos",

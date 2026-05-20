@@ -17,46 +17,60 @@ const approvedResourceWhere = {
 
 exports.getDashboard = async (req, res) => {
   try {
+    const isStudentOrTeacher =
+      req.user.role === "student" || req.user.role === "teacher";
+
+    const queries = [
+      BorrowTransaction.findAll({
+        where: {
+          userId: req.user.userId,
+          status: { [Op.in]: ["active", "overdue"] },
+        },
+        include: [{ model: Resource, as: "resource" }],
+        order: [["dueAt", "ASC"]],
+      }),
+      BorrowTransaction.findAll({
+        where: { userId: req.user.userId },
+        include: [{ model: Resource, as: "resource" }],
+        order: [["updatedAt", "DESC"]],
+        limit: 10,
+      }),
+      ...(isStudentOrTeacher
+        ? [
+            Bookmark.findAll({
+              where: { userId: req.user.userId },
+              include: [
+                {
+                  model: Resource,
+                  as: "resource",
+                  where: approvedResourceWhere,
+                },
+              ],
+              order: [["createdAt", "DESC"]],
+            }),
+            ReadingProgress.findAll({
+              where: { userId: req.user.userId },
+              include: [{ model: Resource, as: "resource" }],
+              order: [["updatedAt", "DESC"]],
+            }),
+          ]
+        : [null, null]),
+      Notification.findAll({
+        where: { userId: req.user.userId },
+        order: [["createdAt", "DESC"]],
+        limit: 10,
+      }),
+    ];
+
     const [activeBorrows, history, bookmarks, progressEntries, notifications] =
-      await Promise.all([
-        BorrowTransaction.findAll({
-          where: {
-            userId: req.user.userId,
-            status: { [Op.in]: ["active", "overdue"] },
-          },
-          include: [{ model: Resource, as: "resource" }],
-          order: [["dueAt", "ASC"]],
-        }),
-        BorrowTransaction.findAll({
-          where: { userId: req.user.userId },
-          include: [{ model: Resource, as: "resource" }],
-          order: [["updatedAt", "DESC"]],
-          limit: 10,
-        }),
-        Bookmark.findAll({
-          where: { userId: req.user.userId },
-          include: [{ model: Resource, as: "resource", where: approvedResourceWhere }],
-          order: [["createdAt", "DESC"]],
-        }),
-        ReadingProgress.findAll({
-          where: { userId: req.user.userId },
-          include: [{ model: Resource, as: "resource" }],
-          order: [["updatedAt", "DESC"]],
-        }),
-        Notification.findAll({
-          where: { userId: req.user.userId },
-          order: [["createdAt", "DESC"]],
-          limit: 10,
-        }),
-      ]);
+      await Promise.all(queries);
 
     res.status(200).json({
       status: "ok",
       data: {
         activeBorrows,
         history,
-        bookmarks,
-        progressEntries,
+        ...(isStudentOrTeacher && { bookmarks, progressEntries }),
         notifications,
       },
     });
@@ -91,7 +105,9 @@ exports.addBookmark = async (req, res) => {
   try {
     const resource = await Resource.findByPk(req.params.resourceId);
     if (!resource) {
-      return res.status(404).json({ status: "fail", error: "Resource not found" });
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Resource not found" });
     }
 
     const [bookmark] = await Bookmark.findOrCreate({
@@ -133,7 +149,9 @@ exports.updateReadingProgress = async (req, res) => {
   try {
     const resource = await Resource.findByPk(req.params.resourceId);
     if (!resource) {
-      return res.status(404).json({ status: "fail", error: "Resource not found" });
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Resource not found" });
     }
 
     const progressPercent = Math.max(
@@ -256,7 +274,9 @@ exports.addReadingListItem = async (req, res) => {
   try {
     const readingList = await ReadingList.findByPk(req.params.readingListId);
     if (!readingList) {
-      return res.status(404).json({ status: "fail", error: "Reading list not found" });
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Reading list not found" });
     }
 
     if (
@@ -271,7 +291,9 @@ exports.addReadingListItem = async (req, res) => {
 
     const resource = await Resource.findByPk(req.body.resourceId);
     if (!resource) {
-      return res.status(404).json({ status: "fail", error: "Resource not found" });
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Resource not found" });
     }
 
     const item = await ReadingListItem.create({

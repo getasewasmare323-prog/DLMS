@@ -2,7 +2,7 @@
 
 This project is a role-based library management platform for Ethiopian high schools. It includes:
 
-- student access to reading materials, videos, exercises, and discussion tools
+- student access to reading materials, videos, and exercises
 - teacher document/video upload and exercise creation
 - librarian textbook registration, circulation, and resource management
 - admin user management, system settings, and reporting
