@@ -12,6 +12,8 @@ const {
 const { Op } = require("sequelize");
 const { v4: uuidv4 } = require("uuid");
 const sendMail = require("../middleware/emailService");
+const fs = require("fs");
+const path = require("path");
 
 const normalizeGradeLevel = (value) => {
   if (value === undefined || value === null || value === "") {
@@ -42,6 +44,32 @@ const parseContentData = (contentData) => {
   return contentData || {};
 };
 
+const parseArrayField = (value) => {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [value];
+    }
+  }
+
+  return [];
+};
+
 const parseKeywords = (keywords) => {
   if (!keywords) {
     return [];
@@ -65,12 +93,138 @@ const normalizeFormatType = (value, fallback = "digital") => {
   return fallback;
 };
 
-const getDefaultResourceStatus = (role) =>
-  role === "teacher" ? "pending" : "approved";
+const getDefaultResourceStatus = () => "approved";
 
 const getVisibleResourceWhere = () => ({
   [Op.or]: [{ status: "approved" }, { status: null }],
 });
+
+const uploadsRoot = path.resolve(__dirname, "..", "uploads");
+
+const getResourceLibrarySection = (resource) =>
+  resource?.contentData?.librarySection ||
+  (resource?.user?.role === "teacher" ? "teacher-material" : "textbook");
+
+const isStudentDownloadableResource = (resource) => {
+  if (!resource?.filePath) {
+    return false;
+  }
+
+  if (resource.resourceType === "video") {
+    return true;
+  }
+
+  return (
+    resource.resourceType === "reading" &&
+    getResourceLibrarySection(resource) === "teacher-material"
+  );
+};
+
+const buildDownloadFilename = (resource) => {
+  const extension = path.extname(resource.filePath || "") || "";
+  const safeTitle = String(resource.title || "resource")
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return `${safeTitle || "resource"}${extension}`;
+};
+
+const buildVideoItemFilename = (resourceTitle, item) => {
+  const extension = path.extname(item?.filePath || "") || ".mp4";
+  const safeName = String(item?.title || resourceTitle || "video")
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return `${safeName || "video"}${extension}`;
+};
+
+const getPlaylistItems = (resource) => {
+  if (!Array.isArray(resource?.contentData?.playlistItems)) {
+    return [];
+  }
+
+  return resource.contentData.playlistItems
+    .filter((item) => item && item.filePath)
+    .map((item, index) => ({
+      itemId: item.itemId || `playlist-item-${index + 1}`,
+      title: item.title || `Lesson ${index + 1}`,
+      description: item.description || "",
+      filePath: item.filePath,
+      position:
+        Number.isInteger(item.position) && item.position > 0
+          ? item.position
+          : index + 1,
+    }))
+    .sort((left, right) => left.position - right.position);
+};
+
+const getDownloadTarget = (resource, requestedItemId = null) => {
+  if (resource.resourceType !== "video" || resource.contentType !== "playlist") {
+    return {
+      filePath: resource.filePath,
+      downloadName: buildDownloadFilename(resource),
+    };
+  }
+
+  const playlistItems = getPlaylistItems(resource);
+  if (!playlistItems.length) {
+    return null;
+  }
+
+  const selectedItem =
+    playlistItems.find((item) => item.itemId === requestedItemId) ||
+    playlistItems[0];
+
+  return {
+    filePath: selectedItem.filePath,
+    downloadName: buildVideoItemFilename(resource.title, selectedItem),
+  };
+};
+
+const collectResourceFilePaths = (resource) => {
+  const filePaths = new Set();
+
+  if (resource?.filePath) {
+    filePaths.add(resource.filePath);
+  }
+
+  getPlaylistItems(resource).forEach((item) => {
+    if (item.filePath) {
+      filePaths.add(item.filePath);
+    }
+  });
+
+  return Array.from(filePaths);
+};
+
+const removeResourceFilesFromDisk = async (filePaths) => {
+  await Promise.allSettled(
+    filePaths.map(async (filePath) => {
+      const absoluteFilePath = path.resolve(__dirname, "..", filePath);
+      if (!absoluteFilePath.startsWith(uploadsRoot)) {
+        return;
+      }
+
+      await fs.promises.unlink(absoluteFilePath);
+    }),
+  );
+};
+
+const buildPlaylistItemsFromUpload = (entries, files) =>
+  files.map((file, index) => {
+    const entry = entries[index] || {};
+    return {
+      itemId: uuidv4(),
+      title: String(entry.title || file.originalname || `Lesson ${index + 1}`)
+        .replace(path.extname(file.originalname || ""), "")
+        .trim(),
+      description: String(entry.description || "").trim(),
+      filePath: file.path,
+      position: index + 1,
+    };
+  });
 
 const getGradeScopeText = (gradeLevel) =>
   gradeLevel !== null && gradeLevel !== undefined
@@ -285,6 +439,8 @@ exports.deleteManagedResource = async (req, res) => {
       });
     }
 
+    const resourceFilePaths = collectResourceFilePaths(resource);
+
     await Resource.sequelize.transaction(async (transaction) => {
       await Promise.all([
         Bookmark.destroy({
@@ -319,6 +475,8 @@ exports.deleteManagedResource = async (req, res) => {
 
       await resource.destroy({ transaction });
     });
+
+    await removeResourceFilesFromDisk(resourceFilePaths);
 
     res.status(200).json({ status: "ok" });
   } catch (err) {
@@ -355,6 +513,71 @@ exports.getResourceById = async (req, res) => {
   } catch (err) {
     console.error("Controller error:", err.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.downloadStudentResource = async (req, res) => {
+  try {
+    if (req.user?.role !== "student") {
+      return res.status(403).json({
+        status: "fail",
+        error: "Only students can download teacher materials and videos",
+      });
+    }
+
+    const resource = await Resource.findOne({
+      where: {
+        resourceId: req.params.id,
+        ...getVisibleResourceWhere(),
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["role"],
+        },
+      ],
+    });
+
+    if (!resource) {
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Resource not found" });
+    }
+
+    if (!isStudentDownloadableResource(resource)) {
+      return res.status(403).json({
+        status: "fail",
+        error: "This resource is not available for student download",
+      });
+    }
+
+    const downloadTarget = getDownloadTarget(resource, req.query.itemId);
+    if (!downloadTarget?.filePath) {
+      return res.status(404).json({
+        status: "fail",
+        error: "The selected lesson file could not be found",
+      });
+    }
+
+    const absoluteFilePath = path.resolve(
+      __dirname,
+      "..",
+      downloadTarget.filePath,
+    );
+    if (!absoluteFilePath.startsWith(uploadsRoot)) {
+      return res.status(400).json({
+        status: "fail",
+        error: "Invalid resource file path",
+      });
+    }
+
+    await fs.promises.access(absoluteFilePath, fs.constants.R_OK);
+
+    res.download(absoluteFilePath, downloadTarget.downloadName);
+  } catch (error) {
+    console.error("Student resource download error:", error.message);
+    res.status(500).json({ status: "error", error: "Failed to download file" });
   }
 };
 
@@ -488,15 +711,33 @@ exports.uploadBook = async (req, res) => {
 };
 
 exports.uploadVideo = async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({
-      status: "fail",
-      error: "An MP4 file is required",
-    });
-  }
-
-  const { title, subject, contentData } = req.body;
   try {
+    const { title, subject, contentData } = req.body;
+    const uploadMode =
+      req.body.contentType === "playlist" ? "playlist" : "single";
+    const singleFile = req.files?.file?.[0] || null;
+    const playlistFiles = req.files?.playlistFiles || [];
+
+    if (uploadMode === "single" && !singleFile) {
+      return res.status(400).json({
+        status: "fail",
+        error: "An MP4 file is required",
+      });
+    }
+
+    if (uploadMode === "playlist" && !playlistFiles.length) {
+      return res.status(400).json({
+        status: "fail",
+        error: "At least one playlist video file is required",
+      });
+    }
+
+    const parsedContentData = parseContentData(contentData);
+    const playlistEntries = parseArrayField(req.body.playlistEntries);
+    const playlistItems =
+      uploadMode === "playlist"
+        ? buildPlaylistItemsFromUpload(playlistEntries, playlistFiles)
+        : [];
     const status = getDefaultResourceStatus(req.user.role);
     const response = await Resource.create({
       resourceId: uuidv4(),
@@ -506,8 +747,16 @@ exports.uploadVideo = async (req, res) => {
       gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
       description: req.body.description?.trim() || null,
       keywords: parseKeywords(req.body.keywords),
-      filePath: req.file.path,
-      contentData: parseContentData(contentData),
+      filePath:
+        uploadMode === "playlist"
+          ? playlistItems[0]?.filePath || null
+          : singleFile.path,
+      contentType: uploadMode,
+      contentData: {
+        ...parsedContentData,
+        description: req.body.description?.trim() || null,
+        playlistItems,
+      },
       resourceType: "video",
       formatType: "digital",
       accessLevel: req.body.accessLevel || "public",
@@ -530,7 +779,7 @@ exports.registerPhysicalResource = async (req, res) => {
       Number.parseInt(req.body.totalCopies, 10) || 1,
       1,
     );
-    const status = req.user.role === "teacher" ? "pending" : "approved";
+    const status = "approved";
     const resource = await Resource.create({
       resourceId: uuidv4(),
       title: req.body.title?.trim(),
@@ -617,6 +866,27 @@ exports.updateManagedResource = async (req, res) => {
       accessLevel: req.body.accessLevel ?? resource.accessLevel,
       shelfLocation: req.body.shelfLocation ?? resource.shelfLocation,
     };
+
+    if (req.body.description !== undefined) {
+      updatePayload.description = req.body.description ?? resource.description;
+    }
+
+    if (req.body.description !== undefined || req.body.contentData !== undefined) {
+      const nextContentData =
+        req.body.contentData && typeof req.body.contentData === "object"
+          ? req.body.contentData
+          : resource.contentData || {};
+
+      updatePayload.contentData = {
+        ...(resource.contentData || {}),
+        ...nextContentData,
+      };
+
+      if (req.body.description !== undefined) {
+        updatePayload.contentData.description =
+          req.body.description?.trim() || null;
+      }
+    }
 
     if (req.user.role !== "teacher") {
       updatePayload.status = req.body.status ?? resource.status;

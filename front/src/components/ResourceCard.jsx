@@ -8,10 +8,14 @@ import {
   Download,
   Library,
   PlayCircle,
-  Tag,
   User,
 } from "lucide-react";
 import { buildAssetUrl } from "../lib/api";
+import {
+  getPlaylistItems,
+  getPrimaryVideoItem,
+  isPlaylistVideo,
+} from "../lib/videoPlaylist";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -19,6 +23,7 @@ import {
   borrowPhysicalResource,
   removeBookmark,
   createReservation,
+  downloadStudentResource,
 } from "../data/resourceEndpoint";
 
 const subjectToneMap = {
@@ -35,6 +40,7 @@ export default function ResourceCard({
   resource,
   bookmarked = false,
   onOpenReader,
+  studentDownloadEnabled = false,
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -49,10 +55,15 @@ export default function ResourceCard({
     : "Recent";
   const canOpenReader =
     resource.formatType !== "physical" && resource.resourceType === "reading";
+  const canOpenVideo = resource.resourceType === "video";
   const canBorrowPhysical =
     resource.formatType !== "digital" && (resource.availableCopies || 0) > 0;
   const isPending = resource.status === "pending";
   const canBookmark = user?.role === "teacher" || user?.role === "student";
+  const showStudentDownload =
+    studentDownloadEnabled && user?.role === "student" && !!resource.filePath;
+  const playlistItems = getPlaylistItems(resource);
+  const primaryPlaylistItem = getPrimaryVideoItem(resource);
 
   const invalidateLibraryQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["books"] });
@@ -80,6 +91,11 @@ export default function ResourceCard({
   const reserveMutation = useMutation({
     mutationFn: () => createReservation(resource.resourceId),
     onSuccess: invalidateLibraryQueries,
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: () =>
+      downloadStudentResource(resource.resourceId, `${resource.title || "resource"}.pdf`),
   });
 
   const openReader = (event) => {
@@ -165,6 +181,11 @@ export default function ResourceCard({
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
             {resource.resourceType}
           </span>
+          {isPlaylistVideo(resource) ? (
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+              {playlistItems.length} lessons
+            </span>
+          ) : null}
           {resource.formatType !== "digital" ? (
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
               {resource.availableCopies || 0} copies
@@ -193,6 +214,16 @@ export default function ResourceCard({
                 <span className="inline-flex items-center gap-2">
                   <BookOpen size={15} />
                   Open Reader
+                </span>
+              </button>
+            ) : canOpenVideo ? (
+              <button
+                onClick={() => navigate(`/catalog/${resource.resourceId}`)}
+                className="flex-1 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-sky-700"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <PlayCircle size={15} />
+                  {isPlaylistVideo(resource) ? "Open Playlist" : "Watch Video"}
                 </span>
               </button>
             ) : (
@@ -253,7 +284,26 @@ export default function ResourceCard({
           </div>
         </div>
 
-        {resource.filePath && user ? (
+        {showStudentDownload ? (
+          <button
+            onClick={() => downloadMutation.mutate()}
+            disabled={downloadMutation.isPending}
+            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-zinc-500 transition-colors hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-zinc-400"
+          >
+            <Download size={14} />
+            {downloadMutation.isPending ? "Preparing download..." : "Download material"}
+          </button>
+        ) : isPlaylistVideo(resource) && user ? (
+          <button
+            onClick={() => navigate(`/catalog/${resource.resourceId}`)}
+            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-zinc-500 transition-colors hover:text-emerald-600 dark:text-zinc-400"
+          >
+            <Download size={14} />
+            {primaryPlaylistItem
+              ? `Open playlist starting with ${primaryPlaylistItem.title}`
+              : "Open playlist"}
+          </button>
+        ) : resource.filePath && user ? (
           <button
             onClick={() =>
               window.open(buildAssetUrl(resource.filePath), "_blank")

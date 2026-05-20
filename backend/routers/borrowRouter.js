@@ -13,6 +13,11 @@ router.get(
   autController.requireRoles("student", "teacher", "librarian", "admin"),
   borrowController.getMyBorrows,
 );
+router.delete(
+  "/history",
+  autController.requireRoles("student", "teacher"),
+  borrowController.clearBorrowHistory,
+);
 router.post(
   "/physical/:resourceId",
   autController.requireRoles("student", "teacher"),
@@ -56,6 +61,11 @@ router.get(
   "/reservations",
   autController.requireRoles("student", "teacher"),
   borrowController.getMyReservations,
+);
+router.delete(
+  "/reservations/history",
+  autController.requireRoles("student", "teacher"),
+  borrowController.clearReservationHistory,
 );
 router.delete(
   "/reservations/:reservationId",

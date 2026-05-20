@@ -14,7 +14,11 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { returnBorrow, updateReadingProgress } from "../data/resourceEndpoint";
+import {
+  clearReadingProgressHistory,
+  returnBorrow,
+  updateReadingProgress,
+} from "../data/resourceEndpoint";
 import { getAdminSummary } from "../data/userEndPoint";
 import { useLearningDashboard } from "../hooks/useResources";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +47,13 @@ export default function Dashboard() {
   const progressMutation = useMutation({
     mutationFn: ({ resourceId, progressPercent }) =>
       updateReadingProgress(resourceId, { progressPercent }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["learning-dashboard"] });
+    },
+  });
+
+  const clearProgressMutation = useMutation({
+    mutationFn: clearReadingProgressHistory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["learning-dashboard"] });
     },
@@ -366,10 +377,19 @@ export default function Dashboard() {
           </div>
 
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h3 className="mb-4 flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-              <RefreshCcw size={18} className="text-emerald-600" />
-              Reading Progress
-            </h3>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 font-serif text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                <RefreshCcw size={18} className="text-emerald-600" />
+                Reading Progress
+              </h3>
+              <button
+                onClick={() => clearProgressMutation.mutate()}
+                disabled={clearProgressMutation.isPending || !progressEntries.length}
+                className="rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-60 dark:border-red-900/40 dark:text-red-300"
+              >
+                {clearProgressMutation.isPending ? "Clearing..." : "Clear"}
+              </button>
+            </div>
             <div className="space-y-3">
               {progressEntries.length ? (
                 progressEntries.slice(0, 4).map((entry) => (

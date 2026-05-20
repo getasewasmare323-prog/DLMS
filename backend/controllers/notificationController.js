@@ -31,3 +31,20 @@ exports.markAllAsRead = async (req, res) => {
     res.status(500).json({ status: "error", error: "Internal server error" });
   }
 };
+
+exports.clearMyNotifications = async (req, res) => {
+  try {
+    const deletedCount = await Notification.destroy({
+      where: { userId: req.user.userId },
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { deletedCount },
+      message: "Notification history cleared",
+    });
+  } catch (error) {
+    console.error("Notification clear error:", error.message);
+    res.status(500).json({ status: "error", error: "Internal server error" });
+  }
+};

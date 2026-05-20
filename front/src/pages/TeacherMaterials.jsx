@@ -110,7 +110,11 @@ export default function TeacherMaterials() {
       {filtered.length > 0 ? (
         <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((res) => (
-            <ResourceCard key={res.resourceId} resource={res} />
+            <ResourceCard
+              key={res.resourceId}
+              resource={res}
+              studentDownloadEnabled
+            />
           ))}
         </section>
       ) : (

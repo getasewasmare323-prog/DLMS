@@ -12,6 +12,7 @@ import {
   // UserRound,
 } from "lucide-react";
 import { returnBorrow } from "../data/resourceEndpoint";
+import { sendDueDateReminders } from "../data/userEndPoint";
 import { useMyBorrows, useOverdueBorrows } from "../hooks/useResources";
 
 export default function LibrarianCirculation() {
@@ -30,6 +31,10 @@ export default function LibrarianCirculation() {
       queryClient.invalidateQueries({ queryKey: ["resource-search"] });
       queryClient.invalidateQueries({ queryKey: ["managed-resources"] });
     },
+  });
+
+  const reminderMutation = useMutation({
+    mutationFn: sendDueDateReminders,
   });
 
   const filteredBorrows = useMemo(() => {
@@ -115,6 +120,16 @@ export default function LibrarianCirculation() {
           Review active loans, process returns, and watch overdue borrowing from
           one desk.
         </p>
+        <button
+          onClick={() => reminderMutation.mutate()}
+          disabled={reminderMutation.isPending}
+          className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-60"
+        >
+          <ShieldCheck size={16} />
+          {reminderMutation.isPending
+            ? "Sending reminders..."
+            : "Send due date reminders"}
+        </button>
       </header>
 
       <section className="grid gap-5 md:grid-cols-4">

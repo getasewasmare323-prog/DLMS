@@ -24,13 +24,17 @@ exports.getDashboard = async (req, res) => {
       BorrowTransaction.findAll({
         where: {
           userId: req.user.userId,
+          borrowType: { [Op.ne]: "digital" },
           status: { [Op.in]: ["active", "overdue"] },
         },
         include: [{ model: Resource, as: "resource" }],
         order: [["dueAt", "ASC"]],
       }),
       BorrowTransaction.findAll({
-        where: { userId: req.user.userId },
+        where: {
+          userId: req.user.userId,
+          borrowType: { [Op.ne]: "digital" },
+        },
         include: [{ model: Resource, as: "resource" }],
         order: [["updatedAt", "DESC"]],
         limit: 10,
@@ -145,6 +149,23 @@ exports.removeBookmark = async (req, res) => {
   }
 };
 
+exports.clearBookmarks = async (req, res) => {
+  try {
+    const deletedCount = await Bookmark.destroy({
+      where: { userId: req.user.userId },
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { deletedCount },
+      message: "Saved resources cleared",
+    });
+  } catch (error) {
+    console.error("Bookmark clear error:", error.message);
+    res.status(500).json({ status: "error", error: "Internal server error" });
+  }
+};
+
 exports.updateReadingProgress = async (req, res) => {
   try {
     const resource = await Resource.findByPk(req.params.resourceId);
@@ -189,6 +210,23 @@ exports.updateReadingProgress = async (req, res) => {
     res.status(200).json({ status: "ok", data: { progress } });
   } catch (error) {
     console.error("Reading progress error:", error.message);
+    res.status(500).json({ status: "error", error: "Internal server error" });
+  }
+};
+
+exports.clearReadingProgressHistory = async (req, res) => {
+  try {
+    const deletedCount = await ReadingProgress.destroy({
+      where: { userId: req.user.userId },
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { deletedCount },
+      message: "Reading progress history cleared",
+    });
+  } catch (error) {
+    console.error("Reading progress clear error:", error.message);
     res.status(500).json({ status: "error", error: "Internal server error" });
   }
 };

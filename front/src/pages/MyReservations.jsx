@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMyReservations, useMyBorrows } from "../hooks/useResources";
-import { cancelReservation } from "../data/resourceEndpoint";
+import {
+  cancelReservation,
+  clearReservationHistory,
+} from "../data/resourceEndpoint";
 
 export default function MyReservations() {
   const { user } = useAuth();
@@ -27,6 +30,14 @@ export default function MyReservations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
       queryClient.invalidateQueries({ queryKey: ["borrows"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-dashboard"] });
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: clearReservationHistory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
       queryClient.invalidateQueries({ queryKey: ["learning-dashboard"] });
     },
   });
@@ -100,6 +111,18 @@ export default function MyReservations() {
           Reserve items that are currently unavailable and get notified when
           they become available.
         </p>
+        <button
+          onClick={() => clearMutation.mutate()}
+          disabled={
+            clearMutation.isPending ||
+            !(expiredReservations.length || cancelledReservations.length)
+          }
+          className="mt-5 rounded-2xl border border-red-200 px-5 py-3 text-sm font-bold text-red-700 disabled:opacity-60 dark:border-red-900/40 dark:text-red-300"
+        >
+          {clearMutation.isPending
+            ? "Clearing..."
+            : "Clear inactive reservation history"}
+        </button>
       </header>
 
       <section className="grid gap-5 md:grid-cols-3">

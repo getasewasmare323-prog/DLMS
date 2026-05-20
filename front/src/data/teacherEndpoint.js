@@ -18,6 +18,20 @@ export async function createExercise(payload) {
   return data.data.exercise;
 }
 
+export async function getMyTeacherExercises() {
+  const response = await fetch(buildApiUrl("/teacher/exercises"), {
+    method: "GET",
+    credentials: "include",
+  });
+
+  const data = await response.json();
+  if (data.status !== "ok") {
+    throw new Error(data.message || data.error || "Failed to load exercises");
+  }
+
+  return data.data.exercises;
+}
+
 export async function getExercises() {
   const response = await fetch(buildApiUrl("/exercises"), {
     method: "GET",

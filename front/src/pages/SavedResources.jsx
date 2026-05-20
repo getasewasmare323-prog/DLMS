@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bookmark, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { buildAssetUrl } from "../lib/api";
+import { clearBookmarks } from "../data/resourceEndpoint";
 import { useLearningDashboard } from "../hooks/useResources";
 
 export default function SavedResources() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const {
     dashboard,
@@ -38,6 +41,14 @@ export default function SavedResources() {
       return haystack.includes(query);
     });
   }, [safeBookmarks, search]);
+
+  const clearMutation = useMutation({
+    mutationFn: clearBookmarks,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["learning-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -124,6 +135,15 @@ export default function SavedResources() {
             className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Browse catalog
+          </button>
+        </div>
+        <div className="mt-4">
+          <button
+            onClick={() => clearMutation.mutate()}
+            disabled={clearMutation.isPending || !safeBookmarks.length}
+            className="rounded-xl border border-red-200 px-4 py-2 text-sm font-bold text-red-700 disabled:opacity-60 dark:border-red-900/40 dark:text-red-300"
+          >
+            {clearMutation.isPending ? "Clearing..." : "Clear saved history"}
           </button>
         </div>
       </section>

@@ -32,6 +32,10 @@ import MyBorrows from "./pages/MyBorrows";
 import SavedResources from "./pages/SavedResources";
 import MyReservations from "./pages/MyReservations";
 import TeacherVideoManagement from "./pages/TeacherVideoManagement";
+import ReadingLists from "./pages/ReadingLists";
+import Notifications from "./pages/Notifications";
+import TeacherExercisesDesk from "./pages/TeacherExercisesDesk";
+import AdminUserDetail from "./pages/Admin/AdminUserDetail";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 const queryClient = new QueryClient({
@@ -63,6 +67,8 @@ const ROLE_ACCESS = {
   myBorrows: ["student", "teacher"],
   myReservations: ["student", "teacher"],
   savedResources: ["student", "teacher"],
+  readingLists: ["student", "teacher", "admin"],
+  notifications: ["admin", "student", "teacher", "librarian"],
   profile: ["admin", "student", "teacher", "librarian"],
   settings: ["admin", "student", "teacher", "librarian"],
 };
@@ -120,6 +126,18 @@ function Routing() {
       path: "saved-resources",
       role: ROLE_ACCESS.savedResources,
       element: <SavedResources />,
+    },
+    {
+      key: "reading-lists",
+      path: "reading-lists",
+      role: ROLE_ACCESS.readingLists,
+      element: <ReadingLists />,
+    },
+    {
+      key: "notifications",
+      path: "notifications",
+      role: ROLE_ACCESS.notifications,
+      element: <Notifications />,
     },
     {
       key: "catalog-detail",
@@ -269,6 +287,12 @@ function Routing() {
       key: "teacher-exercises-alias",
       path: "teacher/exercises",
       role: ROLE_ACCESS.createExercise,
+      element: <TeacherExercisesDesk />,
+    },
+    {
+      key: "teacher-exercises-new",
+      path: "teacher/exercises/new",
+      role: ROLE_ACCESS.createExercise,
       element: <CreateExercise />,
     },
     {
@@ -282,6 +306,12 @@ function Routing() {
       path: "admin/users",
       role: ROLE_ACCESS.adminUsers,
       element: <AdminUsers />,
+    },
+    {
+      key: "admin-user-detail",
+      path: "admin/users/:id",
+      role: ROLE_ACCESS.adminUsers,
+      element: <AdminUserDetail />,
     },
     {
       key: "admin-reports",

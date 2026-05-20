@@ -24,9 +24,12 @@ router.post(
   "/uploadVideo",
   autController.jwtauth,
   autController.teacher,
-  upload.single("file"),
+  upload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "playlistFiles", maxCount: 24 },
+  ]),
   (req, res, next) => {
-    console.log("Uploaded file:", req.file);
+    console.log("Uploaded files:", req.files);
     next();
   },
   resourceController.uploadVideo,
@@ -69,6 +72,12 @@ router.get(
   autController.jwtauth,
   autController.teacherOrLibrarian,
   resourceController.getManagedResources,
+);
+router.get(
+  "/:id/download",
+  autController.jwtauth,
+  autController.libraryMember,
+  resourceController.downloadStudentResource,
 );
 router.patch(
   "/manage/:id",

@@ -7,10 +7,11 @@ import {
   Bookmark,
   BookmarkCheck,
   Calendar,
-  Download,
+  Clock,
   ExternalLink,
   Library,
   Loader2,
+  ListVideo,
   MapPin,
   PlayCircle,
   Tag,
@@ -26,6 +27,12 @@ import {
   createReservation,
 } from "../data/resourceEndpoint";
 import { useBookmarks } from "../hooks/useResources";
+import {
+  getPlaylistItems,
+  getPreferredVideoPath,
+  getPrimaryVideoItem,
+  isPlaylistVideo,
+} from "../lib/videoPlaylist";
 
 export default function ResourceDetail() {
   const { id } = useParams();
@@ -80,11 +87,15 @@ export default function ResourceDetail() {
   }
 
   const contentData = resource.contentData || {};
+  const playlistItems = getPlaylistItems(resource);
+  const primaryVideoItem = getPrimaryVideoItem(resource);
   const canOpenReader =
     resource.resourceType === "reading" &&
     resource.formatType !== "physical" &&
     resource.filePath;
-  const canWatchVideo = resource.resourceType === "video" && resource.filePath;
+  const canWatchVideo =
+    resource.resourceType === "video" &&
+    (!!resource.filePath || playlistItems.length > 0);
   const canBorrowPhysical =
     resource.formatType !== "digital" && (resource.availableCopies || 0) > 0;
   const keywords = Array.isArray(resource.keywords) ? resource.keywords : [];
@@ -120,12 +131,15 @@ export default function ResourceDetail() {
           {resource.filePath ? (
             <button
               onClick={() =>
-                window.open(buildAssetUrl(resource.filePath), "_blank")
+                window.open(
+                  buildAssetUrl(getPreferredVideoPath(resource)),
+                  "_blank",
+                )
               }
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
             >
               <ExternalLink size={16} />
-              Open file
+              {isPlaylistVideo(resource) ? "Open first lesson" : "Open file"}
             </button>
           ) : null}
         </div>
@@ -225,13 +239,16 @@ export default function ResourceDetail() {
             ) : null}
             {canWatchVideo ? (
               <button
-                onClick={() =>
-                  window.open(buildAssetUrl(resource.filePath), "_blank")
-                }
+                onClick={() => {
+                  const targetPath = getPreferredVideoPath(resource);
+                  if (targetPath) {
+                    window.open(buildAssetUrl(targetPath), "_blank");
+                  }
+                }}
                 className="inline-flex items-center gap-2 rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white hover:bg-sky-700"
               >
                 <PlayCircle size={16} />
-                Watch Video
+                {isPlaylistVideo(resource) ? "Watch Playlist" : "Watch Video"}
               </button>
             ) : null}
             {canBorrowPhysical ? (
@@ -281,6 +298,78 @@ export default function ResourceDetail() {
               { label: "Review Note", value: resource.reviewNote },
             ]}
           />
+
+          {canWatchVideo ? (
+            <section className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                    {isPlaylistVideo(resource) ? "Video Playlist" : "Video Preview"}
+                  </h3>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    {isPlaylistVideo(resource)
+                      ? `${playlistItems.length} lessons in sequence`
+                      : "Open the lesson directly from this catalog record"}
+                  </p>
+                </div>
+                {isPlaylistVideo(resource) ? (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/20 dark:text-amber-300">
+                    <ListVideo size={14} />
+                    Starts with {primaryVideoItem?.title || "Lesson 1"}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {playlistItems.length ? (
+                  playlistItems.map((item, index) => (
+                    <button
+                      key={item.itemId}
+                      onClick={() =>
+                        window.open(
+                          buildAssetUrl(getPreferredVideoPath(resource, item.itemId)),
+                          "_blank",
+                        )
+                      }
+                      className="flex w-full items-start justify-between rounded-2xl border border-zinc-200 px-4 py-3 text-left transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-200"
+                    >
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                          Lesson {index + 1}
+                        </p>
+                        <p className="mt-1 font-semibold text-zinc-900 dark:text-zinc-100">
+                          {item.title}
+                        </p>
+                        {item.description ? (
+                          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            {item.description}
+                          </p>
+                        ) : null}
+                      </div>
+                      <PlayCircle size={18} className="mt-1 shrink-0" />
+                    </button>
+                  ))
+                ) : (
+                  <button
+                    onClick={() =>
+                      window.open(buildAssetUrl(getPreferredVideoPath(resource)), "_blank")
+                    }
+                    className="flex w-full items-center justify-between rounded-2xl border border-zinc-200 px-4 py-3 text-left transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-200"
+                  >
+                    <div>
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        Open lesson file
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        Launch the uploaded video in a new tab.
+                      </p>
+                    </div>
+                    <PlayCircle size={18} className="shrink-0" />
+                  </button>
+                )}
+              </div>
+            </section>
+          ) : null}
 
           <div className="rounded-[2rem] bg-gradient-to-br from-emerald-600 to-teal-700 p-6 text-white shadow-xl shadow-emerald-950/20">
             <h3 className="text-lg font-bold">Library Use Tip</h3>

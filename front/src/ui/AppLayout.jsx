@@ -229,16 +229,19 @@ export default function AppLayout() {
                         icon={Bell}
                         label="Notifications"
                         dot={unreadCount > 0}
-                        onClick={openNotifications}
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          navigate("/notifications");
+                        }}
                       />
-                      <MenuOption
+                      {/* <MenuOption
                         icon={Clock}
                         label="Learning Activity"
                         onClick={() => {
                           setIsUserMenuOpen(false);
                           navigate("/dashboard");
                         }}
-                      />
+                      /> */}
 
                       <button
                         onClick={logout}

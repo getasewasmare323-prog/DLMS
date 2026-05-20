@@ -80,6 +80,8 @@ exports.getMyBorrows = async (req, res) => {
         ? {}
         : { userId: req.user.userId };
 
+    where.borrowType = { [Op.ne]: "digital" };
+
     const transactions = await BorrowTransaction.findAll({
       where,
       include: [
@@ -521,6 +523,54 @@ exports.cancelReservation = async (req, res) => {
     res.status(200).json({ status: "ok", message: "Reservation cancelled" });
   } catch (error) {
     console.error("Cancel reservation error:", error.message);
+    res.status(500).json({ status: "error", error: "Internal server error" });
+  }
+};
+
+exports.clearBorrowHistory = async (req, res) => {
+  try {
+    const deletedCount = await BorrowTransaction.destroy({
+      where: {
+        userId: req.user.userId,
+        [Op.or]: [
+          { borrowType: "digital" },
+          { status: "cancelled" },
+          { status: "returned" },
+          {
+            status: "overdue",
+            returnedAt: { [Op.ne]: null },
+          },
+        ],
+      },
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { deletedCount },
+      message: "Closed borrow history cleared",
+    });
+  } catch (error) {
+    console.error("Clear borrow history error:", error.message);
+    res.status(500).json({ status: "error", error: "Internal server error" });
+  }
+};
+
+exports.clearReservationHistory = async (req, res) => {
+  try {
+    const deletedCount = await Reservation.destroy({
+      where: {
+        userId: req.user.userId,
+        status: { [Op.in]: ["cancelled", "expired", "fulfilled"] },
+      },
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { deletedCount },
+      message: "Reservation history cleared",
+    });
+  } catch (error) {
+    console.error("Clear reservation history error:", error.message);
     res.status(500).json({ status: "error", error: "Internal server error" });
   }
 };

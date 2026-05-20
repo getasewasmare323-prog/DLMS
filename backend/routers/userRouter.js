@@ -28,5 +28,10 @@ router.patch(
   autController.jwtauth,
   notificationController.markAllAsRead,
 );
+router.delete(
+  "/notifications/history",
+  autController.jwtauth,
+  notificationController.clearMyNotifications,
+);
 
 module.exports = router;

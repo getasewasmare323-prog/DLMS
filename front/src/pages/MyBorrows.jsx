@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Clock3,
@@ -8,10 +9,12 @@ import {
   // UserRound,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { clearBorrowHistory } from "../data/resourceEndpoint";
 import { useLearningDashboard, useMyBorrows } from "../hooks/useResources";
 
 export default function MyBorrows() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const isLibraryOperator =
     user?.role === "librarian" || user?.role === "admin";
@@ -53,6 +56,16 @@ export default function MyBorrows() {
     ["active", "overdue"].includes(item.status),
   );
   const returned = filteredBorrows.filter((item) => item.status === "returned");
+  const cancelled = filteredBorrows.filter(
+    (item) => item.status === "cancelled",
+  );
+  const clearMutation = useMutation({
+    mutationFn: clearBorrowHistory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["borrows"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-dashboard"] });
+    },
+  });
 
   // Calculate due date warnings
   const getDueDateWarning = (dueAt) => {
@@ -112,6 +125,20 @@ export default function MyBorrows() {
         <p className="mt-3 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
           {subtitle}
         </p>
+        {!isLibraryOperator ? (
+          <button
+            onClick={() => clearMutation.mutate()}
+            disabled={
+              clearMutation.isPending ||
+              !(returned.length || cancelled.length)
+            }
+            className="mt-5 rounded-2xl border border-red-200 px-5 py-3 text-sm font-bold text-red-700 disabled:opacity-60 dark:border-red-900/40 dark:text-red-300"
+          >
+            {clearMutation.isPending
+              ? "Clearing..."
+              : "Clear returned and cancelled history"}
+          </button>
+        ) : null}
       </header>
 
       <section className="grid gap-5 md:grid-cols-3">

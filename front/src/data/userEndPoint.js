@@ -120,6 +120,14 @@ export async function markNotificationsRead() {
   }
 }
 
+export async function clearNotificationHistory() {
+  const response = await fetch(buildApiUrl("/user/notifications/history"), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to clear notifications");
+}
+
 export async function forgotPassword(email) {
   try {
     const resp = await fetch(buildApiUrl("/user/forgot-password"), {
@@ -292,4 +300,21 @@ export async function getBorrowingOverview() {
     "Failed to fetch borrowing overview",
   );
   return result.data;
+}
+
+export async function sendDueDateReminders() {
+  const response = await fetch(buildApiUrl("/borrows/reminders/send"), {
+    method: "POST",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to send due date reminders");
+}
+
+export async function getUserById(userId) {
+  const response = await fetch(buildApiUrl(`/admin/getUserById/${userId}`), {
+    method: "GET",
+    credentials: "include",
+  });
+  const result = await readJsonResponse(response, "Failed to load user details");
+  return result.data.user;
 }

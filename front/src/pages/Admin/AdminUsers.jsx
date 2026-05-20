@@ -2,12 +2,14 @@ import React, { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeleteIcon, Shield, User } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import { deleteUser, updateUserRole } from "../../data/userEndPoint";
 import { useAllUsers } from "../../hooks/useResources";
 
 const roleOptions = ["student", "teacher", "librarian", "admin"];
 
 export default function AdminUsers() {
+  const navigate = useNavigate();
   const { data, error, isLoading } = useAllUsers();
   const queryClient = useQueryClient();
   const users = useMemo(() => data?.data?.users || [], [data]);
@@ -145,7 +147,12 @@ export default function AdminUsers() {
                         {u.role === "admin" ? <Shield size={18} /> : <User size={18} />}
                       </div>
                       <span className="font-semibold text-zinc-900 dark:text-white">
-                        {[u.firstName, u.lastName].filter(Boolean).join(" ")}
+                        <button
+                          onClick={() => navigate(`/admin/users/${u.userId}`)}
+                          className="text-left hover:text-emerald-600"
+                        >
+                          {[u.firstName, u.lastName].filter(Boolean).join(" ")}
+                        </button>
                       </span>
                     </div>
                   </td>

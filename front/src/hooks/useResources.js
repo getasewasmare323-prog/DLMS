@@ -139,7 +139,11 @@ export function useReadingLists() {
   const { data, error, isLoading } = useQuery({
     queryKey: ["reading-lists"],
     queryFn: getReadingLists,
-    enabled: !!user && (user.role === "teacher" || user.role === "student"),
+    enabled:
+      !!user &&
+      (user.role === "teacher" ||
+        user.role === "student" ||
+        user.role === "admin"),
   });
   return { readingLists: data || [], error, isLoading };
 }

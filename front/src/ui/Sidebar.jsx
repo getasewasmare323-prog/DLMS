@@ -17,6 +17,7 @@ import {
   Video,
   Repeat,
   Clock3,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -173,6 +174,12 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           roles: ["student", "teacher"],
         },
         {
+          to: "/reading-lists",
+          icon: Book,
+          label: "Reading Lists",
+          roles: ["student", "teacher"],
+        },
+        {
           to: "/exercises",
           icon: GraduationCap,
           label: "Exercises",
@@ -192,7 +199,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         {
           to: "/teacher/exercises",
           icon: GraduationCap,
-          label: "Create Exercise",
+          label: "Exercise Desk",
           roles: ["teacher"],
         },
         {
@@ -218,6 +225,12 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     {
       title: "Account",
       items: [
+        {
+          to: "/notifications",
+          icon: Bell,
+          label: "Notifications",
+          roles: ["student", "teacher"],
+        },
         {
           to: "/profile",
           icon: UserCircle2,

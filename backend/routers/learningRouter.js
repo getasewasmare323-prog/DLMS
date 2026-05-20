@@ -26,10 +26,20 @@ router.delete(
   autController.requireRoles("student", "teacher"),
   learningController.removeBookmark,
 );
+router.delete(
+  "/bookmarks",
+  autController.requireRoles("student", "teacher"),
+  learningController.clearBookmarks,
+);
 router.patch(
   "/progress/:resourceId",
   autController.requireRoles("student", "teacher"),
   learningController.updateReadingProgress,
+);
+router.delete(
+  "/progress",
+  autController.requireRoles("student", "teacher"),
+  learningController.clearReadingProgressHistory,
 );
 router.get(
   "/reading-lists",

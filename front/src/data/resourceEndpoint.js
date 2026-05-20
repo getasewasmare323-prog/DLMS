@@ -8,6 +8,20 @@ async function readJsonResponse(response, fallbackMessage) {
   return result;
 }
 
+function getFilenameFromDisposition(headerValue, fallbackName = "download") {
+  if (!headerValue) {
+    return fallbackName;
+  }
+
+  const utf8Match = headerValue.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const simpleMatch = headerValue.match(/filename="?([^"]+)"?/i);
+  return simpleMatch?.[1] || fallbackName;
+}
+
 export async function uploadBook(formData) {
   const response = await fetch(buildApiUrl("/resources/uploadBook"), {
     method: "POST",
@@ -96,6 +110,47 @@ export async function getAllVideos() {
   });
   const result = await readJsonResponse(response, "Failed to fetch videos");
   return result.data.resources;
+}
+
+export async function downloadStudentResource(
+  resourceId,
+  fallbackName,
+  options = {},
+) {
+  const query = new URLSearchParams();
+  if (options.itemId) {
+    query.set("itemId", options.itemId);
+  }
+
+  const response = await fetch(
+    buildApiUrl(
+      `/resources/${resourceId}/download${
+        query.toString() ? `?${query.toString()}` : ""
+      }`,
+    ),
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || result.message || "Failed to download file");
+  }
+
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = getFilenameFromDisposition(
+    response.headers.get("Content-Disposition"),
+    fallbackName || "download",
+  );
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(downloadUrl);
 }
 
 export async function searchResources(params = {}) {
@@ -243,6 +298,14 @@ export async function removeBookmark(resourceId) {
   return readJsonResponse(response, "Failed to remove bookmark");
 }
 
+export async function clearBookmarks() {
+  const response = await fetch(buildApiUrl("/learning/bookmarks"), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to clear saved resources");
+}
+
 export async function updateReadingProgress(resourceId, payload) {
   const response = await fetch(
     buildApiUrl(`/learning/progress/${resourceId}`),
@@ -256,6 +319,14 @@ export async function updateReadingProgress(resourceId, payload) {
     },
   );
   return readJsonResponse(response, "Failed to update reading progress");
+}
+
+export async function clearReadingProgressHistory() {
+  const response = await fetch(buildApiUrl("/learning/progress"), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to clear reading progress");
 }
 
 export async function getReadingLists() {
@@ -319,6 +390,14 @@ export async function getMyReservations() {
   return result.data.reservations;
 }
 
+export async function clearReservationHistory() {
+  const response = await fetch(buildApiUrl("/borrows/reservations/history"), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to clear reservation history");
+}
+
 export async function cancelReservation(reservationId) {
   const response = await fetch(
     buildApiUrl(`/borrows/reservations/${reservationId}`),
@@ -328,4 +407,12 @@ export async function cancelReservation(reservationId) {
     },
   );
   return readJsonResponse(response, "Failed to cancel reservation");
+}
+
+export async function clearBorrowHistory() {
+  const response = await fetch(buildApiUrl("/borrows/history"), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return readJsonResponse(response, "Failed to clear borrow history");
 }
