@@ -265,7 +265,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const email = String(req.body.email || "").trim();
 
   if (!email) {
     return res.status(400).json({ error: "Email is required" });
@@ -309,17 +309,29 @@ exports.forgotPassword = async (req, res) => {
       </div>
     `;
 
-    await sendMail({
-      email: user.email,
-      subject: "Password Reset - SMART ACCESS",
-      html,
-    });
+    let previewUrl;
+    try {
+      const result = await sendMail({
+        email: user.email,
+        subject: "Password Reset - SMART ACCESS",
+        html,
+      });
+      previewUrl = result.previewUrl;
+    } catch (emailErr) {
+      console.error("Forgot password email error:", emailErr.message);
+      // Do not expose email delivery failures to the user.
+    }
 
-    res.status(200).json({
+    const responseBody = {
       status: "ok",
       message:
         "If an account with that email exists, a password reset link has been sent.",
-    });
+    };
+    if (previewUrl) {
+      responseBody.previewUrl = previewUrl;
+    }
+
+    res.status(200).json(responseBody);
   } catch (err) {
     console.error("Forgot password error:", err.message);
     res.status(500).json({ error: "Internal server error" });

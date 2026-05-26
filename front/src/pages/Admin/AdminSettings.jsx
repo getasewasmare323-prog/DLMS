@@ -89,7 +89,10 @@ export default function AdminSettings() {
       (item) => item.settingKey === "notification_settings",
     );
     if (notificationRecord?.settingValue) {
-      setNotificationSettings(notificationRecord.settingValue);
+      setNotificationSettings({
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        ...notificationRecord.settingValue,
+      });
     }
 
     const fineRecord = settings.find(
@@ -593,6 +596,8 @@ export default function AdminSettings() {
                     "Send reminders for overdue books"}
                   {key === "returnReminders" &&
                     "Send reminders before due dates"}
+                  {key === "exerciseNotifications" &&
+                    "Send email announcements for teacher exercises"}
                   {key === "weeklyReports" && "Send weekly usage reports"}
                   {key === "monthlyReports" && "Send monthly usage reports"}
                 </p>

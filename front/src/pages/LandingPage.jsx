@@ -13,7 +13,16 @@ export default function LandingPage() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_20%),linear-gradient(180deg,_#eef7ff_0%,_#f8fcff_45%,_#ffffff_100%)] text-slate-900">
+    <div
+      className="min-h-screen bg-cover bg-center text-slate-900"
+      style={{
+        backgroundImage:
+          "linear-gradient(180deg, rgba(15,23,42,0.4) 0%, rgba(15,23,42,0.18) 30%, rgba(255,255,255,0.9) 70%), url('/abcd.webp')",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+        backgroundPosition: "center center",
+      }}
+    >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-8 lg:px-10">
         <div className="flex items-center gap-3">
           <img

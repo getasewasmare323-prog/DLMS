@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,13 +15,40 @@ import {
   Save,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { updateReadingProgress } from "../data/resourceEndpoint";
+import {
+  getResourceById,
+  updateReadingProgress,
+} from "../data/resourceEndpoint";
+import { buildAssetUrl } from "../lib/api";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export default function SecureReader() {
   const location = useLocation();
-  const { title, url: fileUrl, resourceId } = location.state || {};
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search || ""),
+    [location.search],
+  );
+  const state = location.state || {};
+  const requestedResourceId =
+    state.resourceId || searchParams.get("resourceId");
+
+  const {
+    data: resource,
+    isLoading: isResourceLoading,
+    error: resourceError,
+  } = useQuery({
+    queryKey: ["resource", requestedResourceId],
+    queryFn: () => getResourceById(requestedResourceId),
+    enabled: !!requestedResourceId,
+  });
+
+  const fileUrl =
+    state.url || (resource?.filePath ? buildAssetUrl(resource.filePath) : null);
+  const resourceId = state.resourceId || requestedResourceId;
+  const displayTitle =
+    state.title || resource?.title || "School Reading Material";
   const readerRef = useRef(null);
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -143,7 +170,52 @@ export default function SecureReader() {
     return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const displayTitle = title || "School Reading Material";
+  if (!resourceId && !state.url) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center px-6 text-center">
+        <div>
+          <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            No reader source available.
+          </p>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            Open a resource from the library so the secure reader can load the
+            PDF.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isResourceLoading) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center px-6 text-center">
+        <div>
+          <Loader2
+            className="mx-auto mb-4 animate-spin text-emerald-600"
+            size={36}
+          />
+          <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            Loading document details...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (resourceError) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center px-6 text-center">
+        <div>
+          <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            Unable to load reader content.
+          </p>
+          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+            {resourceError.message || "Please try again later."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden rounded-[2.25rem] border border-zinc-200 bg-[radial-gradient(circle_at_top,_rgba(21,128,61,0.18),_transparent_28%),linear-gradient(180deg,_#f5f6f7_0%,_#eef2f1_100%)] shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">

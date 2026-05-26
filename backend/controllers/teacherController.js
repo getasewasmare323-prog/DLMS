@@ -7,6 +7,7 @@ const {
 } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const sendMail = require("../middleware/emailService");
+const { getNotificationSettings } = require("../utils/systemSettings");
 
 const normalizeGradeLevel = (value) => {
   if (value === undefined || value === null || value === "") {
@@ -69,6 +70,11 @@ const sendExerciseEmails = async (students, exercise, teacher) => {
 };
 
 const notifyTargetStudents = async (exercise, teacher) => {
+  const notificationSettings = await getNotificationSettings();
+  const shouldSendExerciseEmails =
+    notificationSettings.emailNotifications &&
+    notificationSettings.exerciseNotifications;
+
   const where = { role: "student" };
   if (exercise.gradeLevel !== null && exercise.gradeLevel !== undefined) {
     where.classLevel = exercise.gradeLevel;
@@ -95,7 +101,9 @@ const notifyTargetStudents = async (exercise, teacher) => {
     })),
   );
 
-  await sendExerciseEmails(students, exercise, teacher);
+  if (shouldSendExerciseEmails) {
+    await sendExerciseEmails(students, exercise, teacher);
+  }
 };
 
 exports.getMyResources = async (req, res) => {
@@ -171,6 +179,113 @@ exports.createExercise = async (req, res) => {
     res.status(201).json({
       status: "ok",
       data: { exercise: createdExercise },
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+exports.updateExercise = async (req, res) => {
+  const { id } = req.params;
+  const { title, subject, gradeLevel, timeLimit, instructions, questions } =
+    req.body;
+
+  if (!title || !subject || !Array.isArray(questions) || !questions.length) {
+    return res.status(400).json({
+      status: "fail",
+      message: "title, subject and at least one question are required",
+    });
+  }
+
+  try {
+    const exercise = await Exercise.findOne({ where: { exerciseId: id } });
+    if (!exercise) {
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Exercise not found" });
+    }
+
+    if (exercise.creatorId !== req.user.userId) {
+      return res.status(403).json({
+        status: "fail",
+        error: "You are not allowed to update this exercise",
+      });
+    }
+
+    await Exercise.sequelize.transaction(async (transaction) => {
+      await exercise.update(
+        {
+          title: title.trim(),
+          subject: subject.trim(),
+          gradeLevel: normalizeGradeLevel(gradeLevel),
+          instructions: instructions?.trim() || null,
+          timeLimit: Number.parseInt(timeLimit, 10) || 15,
+        },
+        { transaction },
+      );
+
+      await Question.destroy({
+        where: { exerciseId: exercise.exerciseId },
+        transaction,
+      });
+
+      const questionRows = questions.map((question) => ({
+        exerciseId: exercise.exerciseId,
+        content: question.text?.trim(),
+        optionA: question.options?.[0]?.trim() || "",
+        optionB: question.options?.[1]?.trim() || "",
+        optionC: question.options?.[2]?.trim() || "",
+        optionD: question.options?.[3]?.trim() || "",
+        correctAnswer: ["A", "B", "C", "D"][question.correct] || "A",
+      }));
+
+      await Question.bulkCreate(questionRows, { transaction });
+    });
+
+    const updatedExercise = await Exercise.findOne({
+      where: { exerciseId: id },
+      include: [{ model: Question, as: "quizQuestions" }],
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { exercise: updatedExercise },
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+exports.deleteExercise = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const exercise = await Exercise.findOne({ where: { exerciseId: id } });
+    if (!exercise) {
+      return res
+        .status(404)
+        .json({ status: "fail", error: "Exercise not found" });
+    }
+
+    if (exercise.creatorId !== req.user.userId) {
+      return res.status(403).json({
+        status: "fail",
+        error: "You are not allowed to delete this exercise",
+      });
+    }
+
+    await Exercise.sequelize.transaction(async (transaction) => {
+      await Question.destroy({
+        where: { exerciseId: exercise.exerciseId },
+        transaction,
+      });
+
+      await exercise.destroy({ transaction });
+    });
+
+    res.status(200).json({
+      status: "ok",
+      data: { exerciseId: exercise.exerciseId },
     });
   } catch (error) {
     res.status(500).json({ status: "error", message: error.message });

@@ -38,7 +38,10 @@ app.use(
     setHeaders: (res, filePath) => {
       if (
         filePath.toLowerCase().endsWith(".pdf") ||
-        filePath.toLowerCase().endsWith(".mp4")
+        filePath.toLowerCase().endsWith(".mp4") ||
+        filePath.toLowerCase().endsWith(".ppt") ||
+        filePath.toLowerCase().endsWith(".doc") ||
+        filePath.toLowerCase().endsWith(".jpg")
       ) {
         if (filePath.toLowerCase().endsWith(".pdf")) {
           res.setHeader("Content-Type", "application/pdf");

@@ -14,6 +14,10 @@ const { v4: uuidv4 } = require("uuid");
 const sendMail = require("../middleware/emailService");
 const fs = require("fs");
 const path = require("path");
+const {
+  getNotificationSettings,
+  getApprovalWorkflowSettings,
+} = require("../utils/systemSettings");
 
 const normalizeGradeLevel = (value) => {
   if (value === undefined || value === null || value === "") {
@@ -93,7 +97,59 @@ const normalizeFormatType = (value, fallback = "digital") => {
   return fallback;
 };
 
-const getDefaultResourceStatus = () => "approved";
+const getDefaultResourceStatus = async (
+  userRole,
+  resourceType,
+  uploadContext = {},
+) => {
+  const approvalSettings = await getApprovalWorkflowSettings();
+
+  if (userRole === "admin") {
+    return "approved";
+  }
+
+  if (
+    userRole === "teacher" &&
+    approvalSettings.teacherUploadsRequireApproval
+  ) {
+    return "pending";
+  }
+
+  if (
+    userRole === "librarian" &&
+    approvalSettings.librarianUploadsRequireApproval
+  ) {
+    return "pending";
+  }
+
+  if (approvalSettings.requireSubjectAlignment && !uploadContext.subject) {
+    return "pending";
+  }
+
+  if (
+    approvalSettings.requireGradeLevelMatch &&
+    (uploadContext.gradeLevel === null ||
+      uploadContext.gradeLevel === undefined)
+  ) {
+    return "pending";
+  }
+
+  if (resourceType === "video") {
+    return approvalSettings.autoApproveVideos ? "approved" : "pending";
+  }
+
+  if (resourceType === "reading") {
+    const librarySection = normalizeLibrarySection(
+      uploadContext.librarySection,
+      userRole,
+    );
+    if (librarySection === "textbook") {
+      return approvalSettings.autoApproveTextbooks ? "approved" : "pending";
+    }
+  }
+
+  return "approved";
+};
 
 const getVisibleResourceWhere = () => ({
   [Op.or]: [{ status: "approved" }, { status: null }],
@@ -161,7 +217,10 @@ const getPlaylistItems = (resource) => {
 };
 
 const getDownloadTarget = (resource, requestedItemId = null) => {
-  if (resource.resourceType !== "video" || resource.contentType !== "playlist") {
+  if (
+    resource.resourceType !== "video" ||
+    resource.contentType !== "playlist"
+  ) {
     return {
       filePath: resource.filePath,
       downloadName: buildDownloadFilename(resource),
@@ -271,6 +330,11 @@ const sendResourceEmails = async (students, resource, actorRole) => {
 };
 
 const createStudentNotifications = async (resource, actorRole) => {
+  const notificationSettings = await getNotificationSettings();
+  if (!notificationSettings.newResourceNotifications) {
+    return;
+  }
+
   const where = { role: "student" };
   if (resource.gradeLevel !== null && resource.gradeLevel !== undefined) {
     where.classLevel = resource.gradeLevel;
@@ -302,7 +366,9 @@ const createStudentNotifications = async (resource, actorRole) => {
     })),
   );
 
-  await sendResourceEmails(students, resource, actorRole);
+  if (notificationSettings.emailNotifications) {
+    await sendResourceEmails(students, resource, actorRole);
+  }
 };
 
 const listReadingResources = async (res, section = null) => {
@@ -651,7 +717,18 @@ exports.searchResources = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    res.status(200).json({ status: "ok", data: { resources } });
+    const filteredResources = resources.filter((resource) => {
+      if (resource.resourceType === "video") {
+        return false;
+      }
+
+      const librarySection = getResourceLibrarySection(resource);
+      return librarySection !== "teacher-material";
+    });
+
+    res
+      .status(200)
+      .json({ status: "ok", data: { resources: filteredResources } });
   } catch (error) {
     console.error("Resource search error:", error.message);
     res.status(500).json({ status: "error", error: "Internal server error" });
@@ -671,7 +748,11 @@ exports.uploadBook = async (req, res) => {
 
   try {
     const parsedContentData = parseContentData(contentData);
-    const status = getDefaultResourceStatus(req.user.role);
+    const status = await getDefaultResourceStatus(req.user.role, "reading", {
+      librarySection: req.body.librarySection,
+      subject,
+      gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
+    });
     const newResource = await Resource.create({
       resourceId: uuidv4(),
       title,
@@ -738,7 +819,10 @@ exports.uploadVideo = async (req, res) => {
       uploadMode === "playlist"
         ? buildPlaylistItemsFromUpload(playlistEntries, playlistFiles)
         : [];
-    const status = getDefaultResourceStatus(req.user.role);
+    const status = await getDefaultResourceStatus(req.user.role, "video", {
+      subject,
+      gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
+    });
     const response = await Resource.create({
       resourceId: uuidv4(),
       title,
@@ -779,7 +863,15 @@ exports.registerPhysicalResource = async (req, res) => {
       Number.parseInt(req.body.totalCopies, 10) || 1,
       1,
     );
-    const status = "approved";
+    const status = await getDefaultResourceStatus(
+      req.user.role,
+      req.body.resourceType,
+      {
+        subject: req.body.subject,
+        gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
+        librarySection: req.body.contentData?.librarySection,
+      },
+    );
     const resource = await Resource.create({
       resourceId: uuidv4(),
       title: req.body.title?.trim(),
@@ -871,7 +963,10 @@ exports.updateManagedResource = async (req, res) => {
       updatePayload.description = req.body.description ?? resource.description;
     }
 
-    if (req.body.description !== undefined || req.body.contentData !== undefined) {
+    if (
+      req.body.description !== undefined ||
+      req.body.contentData !== undefined
+    ) {
       const nextContentData =
         req.body.contentData && typeof req.body.contentData === "object"
           ? req.body.contentData

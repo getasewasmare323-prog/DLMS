@@ -7,6 +7,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -21,6 +22,7 @@ export default function ForgotPassword() {
       if (data.status === "ok") {
         setSuccess("Password reset instructions have been sent to your email.");
         setEmail("");
+        setPreviewUrl(data.previewUrl || "");
       } else {
         setError(data.error || "Failed to send reset email. Please try again.");
       }
@@ -70,9 +72,24 @@ export default function ForgotPassword() {
             )}
 
             {success && (
-              <div className="flex items-start gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-600 dark:bg-green-950/20 dark:text-green-400">
-                <Mail size={18} className="shrink-0" />
-                <span>{success}</span>
+              <div className="space-y-3 rounded-xl bg-green-50 p-3 text-sm text-green-600 dark:bg-green-950/20 dark:text-green-400">
+                <div className="flex items-start gap-2">
+                  <Mail size={18} className="shrink-0" />
+                  <span>{success}</span>
+                </div>
+                {previewUrl ? (
+                  <p className="text-xs text-slate-700 dark:text-slate-300">
+                    Preview link:{" "}
+                    <a
+                      href={previewUrl}
+                      className="font-semibold text-sky-700 hover:underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open email preview
+                    </a>
+                  </p>
+                ) : null}
               </div>
             )}
 

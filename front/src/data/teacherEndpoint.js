@@ -18,6 +18,44 @@ export async function createExercise(payload) {
   return data.data.exercise;
 }
 
+export async function updateExercise(exerciseId, payload) {
+  const response = await fetch(
+    buildApiUrl(`/teacher/exercises/${exerciseId}`),
+    {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const data = await response.json();
+  if (data.status !== "ok") {
+    throw new Error(data.message || data.error || "Failed to update exercise");
+  }
+
+  return data.data.exercise;
+}
+
+export async function deleteExercise(exerciseId) {
+  const response = await fetch(
+    buildApiUrl(`/teacher/exercises/${exerciseId}`),
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
+
+  const data = await response.json();
+  if (data.status !== "ok") {
+    throw new Error(data.message || data.error || "Failed to delete exercise");
+  }
+
+  return data.data;
+}
+
 export async function getMyTeacherExercises() {
   const response = await fetch(buildApiUrl("/teacher/exercises"), {
     method: "GET",

@@ -10,6 +10,7 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 const { Sequelize } = require("sequelize");
+const { getNotificationSettings } = require("../utils/systemSettings");
 const { v4: uuidv4 } = require("uuid");
 
 const DEFAULT_POLICIES = {
@@ -290,11 +291,29 @@ exports.getOverdueBorrows = async (req, res) => {
       order: [["dueAt", "ASC"]],
     });
 
-    await Promise.all(
-      transactions
-        .filter((transaction) => transaction.status === "active")
-        .map((transaction) => transaction.update({ status: "overdue" })),
+    const notificationSettings = await getNotificationSettings();
+
+    const overdueUpdates = transactions.filter(
+      (transaction) => transaction.status === "active",
     );
+
+    await Promise.all(
+      overdueUpdates.map((transaction) =>
+        transaction.update({ status: "overdue" }),
+      ),
+    );
+
+    if (notificationSettings.overdueReminders) {
+      await Promise.all(
+        overdueUpdates.map((transaction) =>
+          notifyBorrower(transaction.userId, {
+            title: `Overdue: ${transaction.resource.title}`,
+            message: `${transaction.resource.title} is now overdue. Please return it as soon as possible.`,
+            resourceId: transaction.resourceId,
+          }),
+        ),
+      );
+    }
 
     res.status(200).json({ status: "ok", data: { transactions } });
   } catch (error) {
@@ -582,6 +601,15 @@ exports.sendDueDateReminders = async (req, res) => {
     // Only librarians and admins can trigger reminders
     if (!["librarian", "admin"].includes(req.user.role)) {
       return res.status(403).json({ status: "fail", error: "Unauthorized" });
+    }
+
+    const notificationSettings = await getNotificationSettings();
+    if (!notificationSettings.returnReminders) {
+      return res.status(200).json({
+        status: "ok",
+        data: { sentReminders: 0 },
+        message: "Return reminders are disabled in system settings.",
+      });
     }
 
     const reminderDays = [7, 3, 1]; // Days before due date to send reminders

@@ -95,7 +95,10 @@ export default function ResourceCard({
 
   const downloadMutation = useMutation({
     mutationFn: () =>
-      downloadStudentResource(resource.resourceId, `${resource.title || "resource"}.pdf`),
+      downloadStudentResource(
+        resource.resourceId,
+        `${resource.title || "resource"}.pdf`,
+      ),
   });
 
   const openReader = (event) => {
@@ -109,7 +112,7 @@ export default function ResourceCard({
       return;
     }
 
-    navigate("/reader", {
+    navigate(`/reader?resourceId=${resource.resourceId}`, {
       state: {
         title: resource.title,
         url: buildAssetUrl(resource.filePath),
@@ -291,7 +294,9 @@ export default function ResourceCard({
             className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-zinc-500 transition-colors hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-zinc-400"
           >
             <Download size={14} />
-            {downloadMutation.isPending ? "Preparing download..." : "Download material"}
+            {downloadMutation.isPending
+              ? "Preparing download..."
+              : "Download material"}
           </button>
         ) : isPlaylistVideo(resource) && user ? (
           <button

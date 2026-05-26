@@ -1,15 +1,49 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Clock3, GraduationCap, Loader2, Plus } from "lucide-react";
+import React, { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BookOpen,
+  Clock3,
+  Edit3,
+  GraduationCap,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getMyTeacherExercises } from "../data/teacherEndpoint";
+import { deleteExercise, getMyTeacherExercises } from "../data/teacherEndpoint";
 
 export default function TeacherExercisesDesk() {
   const navigate = useNavigate();
-  const { data: exercises = [], isLoading, error } = useQuery({
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState(null);
+  const {
+    data: exercises = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["teacher-exercises"],
     queryFn: getMyTeacherExercises,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteExercise,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["teacher-exercises"]);
+      setDeletingId(null);
+    },
+    onError: () => {
+      setDeletingId(null);
+    },
+  });
+
+  const handleDelete = (exerciseId) => {
+    const confirmed = window.confirm(
+      "Delete this exercise? This action cannot be undone.",
+    );
+    if (!confirmed) return;
+    setDeletingId(exerciseId);
+    deleteMutation.mutate(exerciseId);
+  };
 
   if (isLoading) {
     return (
@@ -41,7 +75,8 @@ export default function TeacherExercisesDesk() {
             Exercise Desk
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
-            Review your published exercises and create new practice sets for students.
+            Review your published exercises and create new practice sets for
+            students.
           </p>
         </div>
         <button
@@ -87,6 +122,27 @@ export default function TeacherExercisesDesk() {
                   <BookOpen size={14} className="text-emerald-500" />
                   {new Date(exercise.createdAt).toLocaleDateString()}
                 </span>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/teacher/exercises/${exercise.exerciseId}/edit`)
+                  }
+                  className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-emerald-50 hover:text-emerald-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                >
+                  <Edit3 size={16} />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(exercise.exerciseId)}
+                  disabled={deletingId === exercise.exerciseId}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300"
+                >
+                  <Trash2 size={16} />
+                  {deletingId === exercise.exerciseId ? "Deleting…" : "Delete"}
+                </button>
               </div>
             </article>
           ))

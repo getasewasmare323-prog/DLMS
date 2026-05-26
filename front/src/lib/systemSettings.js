@@ -67,6 +67,7 @@ export const DEFAULT_LIBRARY_HOURS = {
 export const DEFAULT_NOTIFICATION_SETTINGS = {
   emailNotifications: true,
   newResourceNotifications: true,
+  exerciseNotifications: true,
   overdueReminders: true,
   returnReminders: true,
   weeklyReports: false,

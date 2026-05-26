@@ -50,7 +50,7 @@ export async function loginUser(email, password) {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await resp.json();
+    const data = await readJsonResponse(resp, "Login failed");
     console.log("login response", data);
 
     // server should return { status: "ok", data: { user: {...} } }
@@ -71,12 +71,11 @@ export async function fetchMe() {
       method: "GET",
       credentials: "include",
     });
-    const data = await resp.json();
-    if (data?.status === "ok" && data.data?.user) {
-      return data.data.user;
-    }
+    const data = await readJsonResponse(resp, "Failed to fetch current user");
+    return data?.data?.user || null;
   } catch (err) {
     console.error("couldn't fetch /me", err);
+    return null;
   }
 }
 export async function logOutUser() {
@@ -302,6 +301,28 @@ export async function getBorrowingOverview() {
   return result.data;
 }
 
+function buildQueryString(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.append(key, value);
+    }
+  });
+  return query.toString();
+}
+
+export async function generateAdminReport(filters = {}) {
+  const queryString = buildQueryString(filters);
+  const response = await fetch(
+    buildApiUrl(`/admin/reports/generate?${queryString}`),
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
+  return readJsonResponse(response, "Failed to generate admin report");
+}
+
 export async function sendDueDateReminders() {
   const response = await fetch(buildApiUrl("/borrows/reminders/send"), {
     method: "POST",
@@ -315,6 +336,9 @@ export async function getUserById(userId) {
     method: "GET",
     credentials: "include",
   });
-  const result = await readJsonResponse(response, "Failed to load user details");
+  const result = await readJsonResponse(
+    response,
+    "Failed to load user details",
+  );
   return result.data.user;
 }

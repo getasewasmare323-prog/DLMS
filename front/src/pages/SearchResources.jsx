@@ -98,6 +98,10 @@ export default function SearchResources() {
               Search digital and physical resources, check availability, access
               digital items, and borrow physical copies from one school catalog.
             </p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Classroom materials and video lessons are available from their own
+              dedicated pages in the sidebar.
+            </p>
           </div>
 
           <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-800/80">
@@ -178,7 +182,6 @@ export default function SearchResources() {
           >
             <option value="">All resources</option>
             <option value="reading">Reading</option>
-            <option value="video">Video</option>
           </select>
 
           {canReviewStatus ? (

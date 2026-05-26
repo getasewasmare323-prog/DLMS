@@ -35,6 +35,7 @@ import TeacherVideoManagement from "./pages/TeacherVideoManagement";
 import ReadingLists from "./pages/ReadingLists";
 import Notifications from "./pages/Notifications";
 import TeacherExercisesDesk from "./pages/TeacherExercisesDesk";
+import EditExercise from "./pages/EditExercise";
 import AdminUserDetail from "./pages/Admin/AdminUserDetail";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -294,6 +295,12 @@ function Routing() {
       path: "teacher/exercises/new",
       role: ROLE_ACCESS.createExercise,
       element: <CreateExercise />,
+    },
+    {
+      key: "teacher-exercises-edit",
+      path: "teacher/exercises/:id/edit",
+      role: ROLE_ACCESS.createExercise,
+      element: <EditExercise />,
     },
     {
       key: "librarian-register-books",
