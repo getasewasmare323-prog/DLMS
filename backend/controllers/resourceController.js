@@ -18,6 +18,7 @@ const {
   getNotificationSettings,
   getApprovalWorkflowSettings,
 } = require("../utils/systemSettings");
+const { validateResourceContent } = require("../utils/contentValidator");
 
 const normalizeGradeLevel = (value) => {
   if (value === undefined || value === null || value === "") {
@@ -717,14 +718,21 @@ exports.searchResources = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    const filteredResources = resources.filter((resource) => {
-      if (resource.resourceType === "video") {
-        return false;
-      }
+    // Only apply library section filters when NOT searching for moderation purposes
+    // (pending/rejected/archived resources should be visible to admins for review)
+    const isModerationSearch =
+      status && ["pending", "rejected", "archived"].includes(status);
 
-      const librarySection = getResourceLibrarySection(resource);
-      return librarySection !== "teacher-material";
-    });
+    const filteredResources = isModerationSearch
+      ? resources
+      : resources.filter((resource) => {
+          if (resource.resourceType === "video") {
+            return false;
+          }
+
+          const librarySection = getResourceLibrarySection(resource);
+          return librarySection !== "teacher-material";
+        });
 
     res
       .status(200)
@@ -747,6 +755,30 @@ exports.uploadBook = async (req, res) => {
   const filePath = req.file.path;
 
   try {
+    // Validate content for spam and duplicates
+    const validation = await validateResourceContent(
+      {
+        title: title?.trim() || "",
+        description: req.body.description?.trim() || "",
+        subject: subject?.trim() || "",
+        gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
+      },
+      filePath,
+    );
+
+    if (!validation.isValid) {
+      // Clean up uploaded file if validation fails
+      fs.unlink(filePath, (err) => {
+        if (err) console.error("Error deleting file:", err);
+      });
+
+      return res.status(400).json({
+        status: "fail",
+        errors: validation.errors,
+        message: "Content validation failed",
+      });
+    }
+
     const parsedContentData = parseContentData(contentData);
     const status = await getDefaultResourceStatus(req.user.role, "reading", {
       librarySection: req.body.librarySection,
@@ -762,6 +794,7 @@ exports.uploadBook = async (req, res) => {
       description: req.body.description?.trim() || null,
       keywords: parseKeywords(req.body.keywords),
       filePath,
+      fileHash: validation.fileHash || null,
       contentData: {
         ...parsedContentData,
         librarySection: normalizeLibrarySection(
@@ -782,11 +815,20 @@ exports.uploadBook = async (req, res) => {
     if (status === "approved") {
       await createStudentNotifications(newResource, req.user.role);
     }
-    res
-      .status(201)
-      .json({ status: "success", data: { resource: newResource } });
+
+    // Return warnings if any
+    const response = { status: "success", data: { resource: newResource } };
+    if (validation.warnings.length > 0) {
+      response.warnings = validation.warnings;
+    }
+
+    res.status(201).json(response);
   } catch (err) {
     console.error("Controller error:", err.message);
+    // Clean up uploaded file on error
+    fs.unlink(filePath, (err) => {
+      if (err) console.error("Error deleting file:", err);
+    });
     res.status(500).json({ status: "error", error: "Internal server error" });
   }
 };
@@ -813,6 +855,38 @@ exports.uploadVideo = async (req, res) => {
       });
     }
 
+    // Validate content for spam and duplicates (use first file for hash calculation)
+    const filePathForValidation =
+      uploadMode === "single" ? singleFile.path : playlistFiles[0].path;
+    const validation = await validateResourceContent(
+      {
+        title: title?.trim() || "",
+        description: req.body.description?.trim() || "",
+        subject: subject?.trim() || "",
+        gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
+      },
+      filePathForValidation,
+    );
+
+    if (!validation.isValid) {
+      // Clean up uploaded files if validation fails
+      const allFiles =
+        uploadMode === "single"
+          ? [singleFile]
+          : [singleFile, ...playlistFiles].filter(Boolean);
+      allFiles.forEach((file) => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error("Error deleting file:", err);
+        });
+      });
+
+      return res.status(400).json({
+        status: "fail",
+        errors: validation.errors,
+        message: "Content validation failed",
+      });
+    }
+
     const parsedContentData = parseContentData(contentData);
     const playlistEntries = parseArrayField(req.body.playlistEntries);
     const playlistItems =
@@ -835,6 +909,7 @@ exports.uploadVideo = async (req, res) => {
         uploadMode === "playlist"
           ? playlistItems[0]?.filePath || null
           : singleFile.path,
+      fileHash: validation.fileHash || null,
       contentType: uploadMode,
       contentData: {
         ...parsedContentData,
@@ -850,7 +925,14 @@ exports.uploadVideo = async (req, res) => {
     if (status === "approved") {
       await createStudentNotifications(response, req.user.role);
     }
-    res.status(201).json({ status: "success", data: { resource: response } });
+
+    // Return warnings if any
+    const responseData = { status: "success", data: { resource: response } };
+    if (validation.warnings.length > 0) {
+      responseData.warnings = validation.warnings;
+    }
+
+    res.status(201).json(responseData);
   } catch (err) {
     console.log("error message", err.message);
     res.status(500).json({ status: "error", error: "Internal server error" });
@@ -859,6 +941,25 @@ exports.uploadVideo = async (req, res) => {
 
 exports.registerPhysicalResource = async (req, res) => {
   try {
+    // Validate content for spam
+    const validation = await validateResourceContent(
+      {
+        title: req.body.title?.trim() || "",
+        description: req.body.description?.trim() || "",
+        subject: req.body.subject?.trim() || "",
+        gradeLevel: normalizeGradeLevel(req.body.gradeLevel),
+      },
+      null, // No file for physical resources
+    );
+
+    if (!validation.isValid) {
+      return res.status(400).json({
+        status: "fail",
+        errors: validation.errors,
+        message: "Content validation failed",
+      });
+    }
+
     const totalCopies = Math.max(
       Number.parseInt(req.body.totalCopies, 10) || 1,
       1,
@@ -903,7 +1004,13 @@ exports.registerPhysicalResource = async (req, res) => {
       })),
     );
 
-    res.status(201).json({ status: "ok", data: { resource, copies } });
+    // Return warnings if any
+    const responseData = { status: "ok", data: { resource, copies } };
+    if (validation.warnings.length > 0) {
+      responseData.warnings = validation.warnings;
+    }
+
+    res.status(201).json(responseData);
   } catch (error) {
     console.error("Physical resource register error:", error.message);
     res.status(500).json({ status: "error", error: "Internal server error" });

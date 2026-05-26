@@ -86,6 +86,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      fileHash: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
       userId: {
         type: DataTypes.UUID,
         allowNull: true,
